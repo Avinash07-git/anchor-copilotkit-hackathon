@@ -164,27 +164,24 @@ Pitched: PillLines (drug interaction calendar with red lines), ShotMap (vaccine 
 - [x] Lock idea: RentProof
 - [x] Save full context to `RENTPROOF_SPEC.md` + `IDEA_GRAVEYARD.md` + this file
 
-### Thursday 2026-05-08 — BUILD DAY 1
-- [ ] `PROTOCOL_NOTES.md` — A2UI / AG-UI / MCP cheat sheet
-- [ ] `ARCHITECTURE.md` — system diagram for RentProof
-- [ ] Project skeleton (FastAPI + React + .env.example + .gitignore)
-- [ ] Hello-world: each protocol independently working
-- [ ] Mock landlord letter PDF created
-- [ ] Agent prompt v1 with CA Civil Code §1950.5 baked in
+### Friday 2026-05-08 — BUILD DAY 1
+- [x] `PROTOCOL_NOTES.md` — A2UI / AG-UI / MCP cheat sheet
+- [x] `ARCHITECTURE.md` — system diagram for RentProof
+- [x] Project skeleton (FastAPI + React + .env.example + .gitignore)
+- [x] Statute data files (CA §1950.5 + TX §92.104) baked in
+- [x] MCP tool stubs returning Rita's demo data
+- [x] Agent system prompt v1 (with safer-language guardrails per GPT review)
+- [ ] Mock landlord letter PDF + mock lease PDF
+- [ ] Pydantic AI agent wired to Gemini → first valid `UIPlan` JSON
 - [ ] Floor plan SVG component (5 rooms, Tailwind-colored)
+- [ ] Demo photos grabbed (per `data/demo_photos/PHOTO_SHOPPING_LIST.md`)
 
-### Friday 2026-05-09 — BUILD DAY 2 + POLISH
-- [ ] Wire MCP tools (PDF reader, legal lookup, demand letter generator)
-- [ ] AG-UI streaming agent reasoning to UI panel
-- [ ] A2UI per-room cards (paint card, cleaning card, damage card)
-- [ ] State switcher + Texas law variant
-- [ ] Demand letter PDF generation (CA + TX templates)
-- [ ] Polish pass — Walmart blue.100 / spark.100, WCAG AA
-- [ ] **Record backup demo video** (mandatory safety net)
-- [ ] Pitch script + rehearsal #1
-
-### Saturday 2026-05-09 — EVENT DAY
-- See `RENTPROOF_SPEC.md` for full hour-by-hour plan
+### Saturday 2026-05-09 — EVENT DAY (12:00 PM doors, 1–5 PM build, 5 PM demo)
+- See `RENTPROOF_SPEC.md` Build Plan for full hour-by-hour event-day plan
+- Pre-event polish: AG-UI WebSocket adapter, render the 7 A2UI components,
+  bulk-photo classification, drag-drop onto rooms, voice intake + corrections,
+  "change one fact" reactive re-render, TX state variant, real PDF letter,
+  HITL approval modal, backup video, 5 pitch rehearsals
 
 ---
 
