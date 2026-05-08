@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.pnpm-store/
+dist/
+.vite/
+*.log
+.DS_Store
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# RentProof — runtime artifacts
+backend/app/data/runtime/
+backend/tmp/
+*.generated.pdf
+
+# 🚨 PII / sensitive data — NEVER commit real letters/leases/photos
+# Only commit demo data clearly labeled as Rita Sharma's mock case
+backend/app/data/real/
+*_real.pdf
+*_real.jpg
+ssn_*.txt
+hipaa_*.txt
