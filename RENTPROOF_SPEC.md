@@ -1,6 +1,6 @@
 # 🟢 RentProof — Frozen Project Spec
 
-> **Status:** 🔒 FROZEN as of 2026-05-07 evening (Evidence-Room reframe applied). No more pivots.
+> **Status:** 🔒 FROZEN as of 2026-05-08 (interactive canvas + frictionless UX + accuracy/judge-proofing pass applied). No more pivots.
 > **Event:** Generative UI Hackathon (A2UI + AG-UI + MCP Apps), Saturday 2026-05-09, San Francisco
 > **Mode:** Solo. Avinash directs, Avi (Code Puppy) executes.
 > **Goal:** Win Mac Minis 🥇
@@ -10,27 +10,29 @@
 
 ## 🧠 MENTAL MODEL (read this first)
 
-> **RentProof is an AI investigator that builds Rita a custom "evidence room" for her exact dispute. Change a fact → the room rebuilds itself.**
+> **RentProof is an AI investigator that turns Rita's lease, landlord letter, and photos into a custom "evidence room" — a room-by-room map of which deposit deductions are *worth challenging*. Change a fact → the room rebuilds itself.**
 
-That's the one sentence that should live in your head. NOT "letter generator." NOT "floor plan app." An evidence room builder. Generative UI is load-bearing because every renter's case is different and the agent composes the screen from a small component kit per case.
+That's the one sentence that should live in your head. NOT "letter generator." NOT "floor plan app." NOT "illegal-charge detector." An evidence room builder. Generative UI is load-bearing because every renter's case is different and the agent composes the screen from a small component kit per case.
+
+**RentProof never says a charge is "illegal."** Courts decide that. RentProof shows the user what's *likely reasonable*, what *needs more proof*, and what's *worth challenging* — then drafts a user-approved letter for them.
 
 ---
 
 ## 🎯 ONE-LINE PITCH
 
-> *"Your landlord kept your security deposit. RentProof investigates your case, builds your evidence room, and writes the demand letter to fight back."*
+> *"Your landlord kept part of your deposit. RentProof reads your lease, letter, and photos, builds a room-by-room evidence map of which deductions are worth challenging, and drafts the response letter for you to review and send."*
 
 ---
 
 ## 📖 THE PRODUCT IN ONE PARAGRAPH (plain English)
 
-Rita Sharma moves out of her San Francisco 1-bedroom that rented for $3,200/month. Her landlord mails her a deduction letter: *"Keeping $1,800 of your $2,500 deposit for paint, carpet cleaning, and damage."* Rita opens RentProof, drag-and-drops the landlord's letter, her lease, and her move-in/move-out photos. The app reads everything, then renders her apartment as a **top-down floor plan** with each room color-coded:
+Rita Sharma moves out of her San Francisco 1-bedroom. Her landlord mails her an itemized statement: *"Withholding $1,800 of your $2,500 deposit for paint, carpet cleaning, and damage."* Rita opens RentProof. She taps the mic and says *"My landlord in SF kept $1,800 of my $2,5deposit after a 3-year lease,"* then drags her lease, the landlord's letter, and a pile of randomly-named move-in/move-out photos into the drop zone. The app reads everything, classifies the photos by room, then renders her apartment as a **top-down floor plan** with each room color-coded:
 
-- 🟢 **Green** = the charge is fair, accept it
-- 🟡 **Yellow** = the charge could go either way, you need more proof
-- 🔴 **Red** = the charge is illegal under California law, fight it
+- 🟢 **Likely reasonable** — the deduction looks fair given the lease + photos + applicable rules
+- 🟡 **Needs more proof** — it could go either way; here's the evidence to gather
+- 🔴 **Worth challenging** — based on the documents and rule snippets, this one's worth pushing back on
 
-Rita clicks the red bedroom — a card pops out: *"$400 paint charge. Illegal under CA Civil Code §1950.5(b)(3) because tenancy >2 years means paint is normal wear and tear. Recommended action: dispute."* She clicks "Generate demand letter," reviews the draft, approves it. RentProof spits out a legally-formatted demand letter PDF: *"Return $1,200 within 14 days or I will file in small claims court."* Done in 5 minutes.
+Rita clicks the red bedroom — a card slides out: *"$400 paint charge. California Civil Code §1950.5 lets landlords deduct for damage beyond ordinary wear and tear. After a 3-year tenancy and based on your move-in/move-out photos, repainting looks like normal wear and tear rather than tenant damage. **Worth challenging.**"* She clicks **Review & approve** → reads the draft letter → approves → RentProof renders a PDF response letter she can print and mail. *"This is a draft. Confirm with a tenant-rights attorney before filing in court."*
 
 ---
 
@@ -64,21 +66,25 @@ Rita clicks the red bedroom — a card pops out: *"$400 paint charge. Illegal un
 
 ## 🎬 THE 3-MINUTE DEMO ARC (memorize this)
 
-> Full visual storyboard with screens in `SCREENS.md`. Script summary here.
+> Full visual storyboard with screens in `SCREENS.md`. Script summary here. **Language rule for the entire pitch: never say "illegal," "stolen," or "guaranteed." Use "withheld," "worth challenging," "draft," "likely reasonable."**
 
-1. **(0:00–0:15) Hook.** *"Every renter in this room has been screwed on a deposit. $4.5 billion stolen each year. RentProof fights back."*
+1. **(0:00–0:15) Hook.** *"There are 44 million renter households in the U.S. About 85% paid a security deposit. When the landlord keeps part of it, the fight is usually too small for a lawyer and too confusing for the renter. RentProof handles the confusion."*
 
-2. **(0:15–0:25) One click.** Hit the spark.100 yellow **"Try with Rita's case"** button. Skip upload. Investigation panel pops up. **AG-UI streams the agent's work live:** *"reading letter... 3 charges... reading lease... tenancy 3y... checking §1950.5..."*
+2. **(0:15–0:30) Voice intake.** Tap mic. *"My landlord in SF kept $1,800 of my $2,500 deposit after a 3-year lease."* The fields auto-populate. State auto-detects to California. (No form.)
 
-3. **(0:25–0:55) The reveal.** Evidence Room paints itself piece by piece **(A2UI)**: confidence meter (87%), floor plan with bedroom 🔴 / living 🟡 / kitchen 🟢, room cards, evidence checklist, demand letter draft.
+3. **(0:30–0:40) Bulk photo dump.** Drag a folder of randomly-named photos into the drop zone. Watch them auto-classify into rooms via Gemini vision. (No renaming, no sorting.)
 
-4. **(0:55–1:15) Click a room.** Tap the 🔴 bedroom. `LawCitation` card slides in with the actual §1950.5 text + plain-English explanation.
+4. **(0:40–1:00) The reveal.** AG-UI streams the agent's work live: *"reading letter… 3 deductions… reading lease… tenancy 3y… looking up California rules…"*. The Evidence Room paints itself piece by piece **(A2UI)**: confidence meter (87%), floor plan with bedroom 🔴 / living 🟡 / kitchen 🟢, room cards, evidence checklist, draft response letter. Photos snap into the right rooms.
 
-5. **(1:15–1:45) ⭐ THE KILLER MOMENT — "change one fact."** Type into the AG-UI chat: *"actually I lived there only 6 months."* The agent re-runs and the screen reactively rebuilds: bedroom 🔴 → 🟡, confidence 87% → 54%, letter softens, evidence checklist grows, citation rewrites. *"Watch this. I changed one fact. The agent rebuilt the entire screen. We didn't pre-design this view — the agent composed it. That is what generative UI means."*
+5. **(1:00–1:15) Spatial input — the canvas IS the input.** Drag a stray carpet photo onto the living room. Living room re-evaluates and updates color live. *"Try doing that in a chatbot."*
 
-6. **(1:45–2:35) The action.** Click **Review & approve** → modal with the legal letter → approve → PDF download ready. *"Print it, mail it certified, $1,000 back in 14 days. Five minutes total."*
+6. **(1:15–1:35) Click a room.** Tap the 🔴 bedroom. `LawCitation` card slides in with the actual §1950.5 text + a plain-English explanation — phrased as **why this charge is worth challenging**, not why it's "illegal."
 
-7. **(2:35–3:00) State switcher (encore).** Flip state CA → TX. Screen rebuilds *again* with TX §92.104 logic. *"Every state has different law. We didn't build a Texas screen. The agent did. Mac Minis please."*
+7. **(1:35–2:00) ⭐ THE KILLER MOMENT — "change one fact."** Hold the mic in chat: *"actually I lived there only 6 months."* The agent re-runs and the screen reactively rebuilds: bedroom 🔴 → 🟡 (paint after 6 months is more defensible for the landlord), confidence 87% → 54%, draft letter softens, evidence checklist grows, citation rewrites. **Open the Agent UI Plan inspector** (collapsible side panel) to show the JSON list of components changed — proof to engineer judges that this is real A2UI, not a hardcoded template swap. *"I changed one fact. The agent re-evaluated the whole case and rebuilt the screen. We didn't pre-design this view — the agent composed it."*
+
+8. **(2:00–2:35) The action.** Click **Review & approve** → modal with the draft response letter ("not legal advice; confirm with a tenant rights attorney") → approve → PDF download. *"Print, mail certified, see what the landlord says. If they don't respond, this is what you'd take to small claims."*
+
+9. **(2:35–3:00) State encore (optional, only if running on time).** Flip state CA → TX. Screen rebuilds *again* with TX §92.104 logic. *"Same case, different state, different rules — the agent composed a different screen. Mac Minis please."*
 
 ---
 
@@ -104,23 +110,26 @@ Rita clicks the red bedroom — a card pops out: *"$400 paint charge. Illegal un
 **Force-fit risk:** none. Required for legal output + powers the demo's tension.
 
 ### A2UI (Google DeepMind) — the agent's drawing pad ← LOAD-BEARING
-**The agent composes the screen from a 6-component kit per case** — it doesn't pick from pre-built templates.
+**The agent composes the screen from a 7-component kit per case** — it doesn't pick from pre-built templates.
 
 Component kit:
 1. `ConfidenceMeter` (always)
-2. `FloorPlan` (always)
-3. `RoomCard` (one per charged room)
-4. `LawCitation` (one per illegal verdict)
-5. `EvidenceChecklist` (when ambiguous verdicts exist)
-6. `DemandLetterPreview` (after letter generated)
+2. `FloorPlan` (always; **interactive — rooms accept photo drops**)
+3. `BulkPhotoBin` (when there are unclassified photos)
+4. `RoomCard` (one per charged room)
+5. `LawCitation` (one per "worth challenging" verdict)
+6. `EvidenceChecklist` (when ambiguous verdicts exist)
+7. `DemandLetterPreview` (after letter generated)
+
+Plus a developer-facing **Agent UI Plan inspector** (collapsible side panel) that displays the live JSON list of components the agent composed — visible proof for engineer judges that A2UI is real, not hardcoded.
 
 Agent emits a JSON UI plan; React renderer interprets it. Different case = different plan = different screen. Studio with 1 charge gets 1 RoomCard; 3BR with 6 charges gets 6 RoomCards. CA paint dispute and TX cleaning dispute compose totally different screens *from the same code path*.
 
 **Force-fit risk:** ONLY if we cheat with hardcoded "CA template" + "TX template" + a switch statement. We are committing to the legit path: agent composes per case from the kit. Schema in `ARCHITECTURE.md` § 6.
 
 **The two A2UI proof beats in the demo:**
-- *Primary:* "change one fact" → screen reactively rebuilds (proves agent owns the composition)
-- *Encore:* state switch CA → TX → screen rebuilds again (proves it generalizes)
+- *Primary (mandatory):* "change one fact" → same case re-evaluated → screen reactively rebuilds. Open the Agent UI Plan inspector to show the JSON delta.
+- *Encore (only if running on time):* state switch CA → TX → screen rebuilds again. Honest framing: this proves the agent generalizes to new statutes; not the headline beat because state-switching can read as canned.
 
 ---
 
@@ -136,28 +145,60 @@ Agent emits a JSON UI plan; React renderer interprets it. Different case = diffe
 | LLM | Gemini 2.5 Flash → 2.0 Flash → Gemma 3 12B (fallback cascade) |
 | MCP | mcp-use (Python SDK) |
 | AG-UI | CopilotKit React SDK + Pydantic AI adapter |
-| A2UI | Custom 6-component kit, mapped to A2UI starter-kit shape Sat 1–3 PM |
+| A2UI | Custom 7-component kit (+ Agent UI Plan inspector for judges), mapped to A2UI starter-kit shape Sat 1–3 PM |
 | PDF parse | pdfplumber |
 | PDF generate | ReportLab |
-| Floor plan | Custom React + inline SVG + Tailwind |
+| Floor plan | Custom React + inline SVG + Tailwind (drop-target rooms) |
+| Voice | Web Speech API (browser native) |
+| Vision | Gemini 2.5 Flash multimodal (one call per photo to label `{room, phase}`) |
 | Colors | Walmart palette (blue.100 / spark.100 / red.100 / green.100) — WCAG AA |
+
+---
+
+## 📊 JUDGE-SAFE STATS (use these, drop the made-up ones)
+
+> The earlier draft used **"$4.5 billion stolen each year"** — that number was made up by Avi and is not defensible. Replaced with verifiable, judge-checkable stats below. Avinash should sanity-check these against current sources before the pitch.
+
+| Stat | Use it for |
+|---|---|
+| **44.6M U.S. renter-occupied housing units** (US Census ACS) | Market-size hook — "every one of these households can run into this" |
+| **42.4M renter households paying cash rent** | Refining TAM |
+| **~85% of renters report paying a security deposit** (87% recent renters) | Universality of the problem |
+| **~$750 typical security deposit (2024)** | Sets the human dollar amount |
+| **66% of San Francisco households are renter-occupied (2020)** | Local hook for SF judges |
+| **21M+ renter households are cost-burdened (>30% of income on housing, 2023)** | Why this $750 matters |
+| **California AB 12** capped most new residential security deposits at one month's rent (effective July 1, 2024) | Recency / California-aware credibility |
+| **California 21-day rule** — landlords generally have 21 calendar days to return the deposit or provide an itemized statement | Concrete rule the agent uses |
+| **California photo-proof rule** — starting April 1, 2025, landlords withholding deposits for repairs/cleaning must provide photos | Why move-in/move-out photos matter; very current |
+| **San Francisco interest rule** — landlords owe interest on deposits held >1 year (2026–2027 rate: 4.2%) | Easy local credibility flex |
+
+**Language rules (everywhere — product UI, pitch, letter, code):**
+- Never say "illegal," "stolen," "guaranteed," "fight back," "get $X back."
+- Use "withheld," "deducted," "at risk," "worth challenging," "likely reasonable," "needs more proof," "draft response," "user-approved."
+- Always include: "This is not legal advice. Confirm with a tenant-rights attorney before filing in court."
 
 ---
 
 ## 📐 SCOPE (LOCKED — what's in, what's out)
 
 ### ✅ IN scope for the demo
-- **2 states:** California (primary) + Texas (the demo "switch" moment)
+- **2 states:** California (primary) + Texas (optional encore)
 - **1 demo apartment:** Rita Sharma's 1BR SF apartment with 5 rooms (kitchen, living room, bedroom, bathroom, hallway)
-- **1 mock landlord letter PDF** that we control
-- **3 dispute types:** paint, carpet cleaning, damage
-- **Real legal text** for CA §1950.5 and TX §92.104 baked into agent prompts
-- **Floor plan UI** (top-down SVG)
-- **Per-room evidence cards** that morph by dispute type
-- **Demand letter PDF** generation with state-specific template
-- **State switcher dropdown** that triggers full UI rebuild via A2UI
+- **1 mock landlord letter PDF + 1 mock lease PDF** that we control
+- **3 deduction types:** paint, carpet cleaning, damage
+- **Real rule snippets** for CA §1950.5 + AB 12 + CA photo-proof rule and TX §92.104 baked into agent prompts
+- **Floor plan UI** (top-down SVG, **interactive — rooms accept photo drops**)
+- **Per-room evidence cards** that morph by deduction type
+- **Bulk photo drop** with Gemini-vision auto-classification by room + phase
+- **Voice intake** on landing (Web Speech API)
+- **Voice corrections** in AG-UI chat
+- **Auto-detected state** from address (dropdown is override only)
+- **Draft response letter PDF** with state-specific template (clearly labeled "Draft — not legal advice")
+- **Agent UI Plan inspector** (collapsible panel, shows live JSON — for engineer judges)
 - **AG-UI live agent reasoning panel**
+- **State switcher** (encore moment only)
 - **Backup pre-recorded demo video** (mandatory, recorded Friday)
+- **Cached agent responses** for the demo case (offline-safe fallback)
 
 ### ❌ OUT of scope (resist temptation)
 - ❌ Lease signing analysis (was in RentRadar, killed)
@@ -165,81 +206,80 @@ Agent emits a JSON UI plan; React renderer interprets it. Different case = diffe
 - ❌ Rent comparison data (was in RentRadar, killed)
 - ❌ More than 2 states at launch
 - ❌ Mobile app (web only)
-- ❌ User accounts / login (single-session demo)
+- ❌ User accounts / login / email signup (single-session demo)
 - ❌ Real arbitrary landlord-letter parsing (we control the demo doc; agent prompt knows the structure)
-- ❌ Real photo-based damage detection (mock the photo upload)
-- ❌ Court filing automation (just generate the letter; mention "small claims filing kit coming soon")
+- ❌ Arbitrary photo damage detection / pixel-diffing (we classify room + phase, that's it)
+- ❌ Click-to-annotate damage spots on the floor plan (was P2; cut to keep focus)
+- ❌ Court filing automation (just generate the draft; the user mails it themselves)
 - ❌ Subscription / payment / pricing UI
+- ❌ Saying anything is "illegal" — we are not lawyers
 
 ---
 
-## 📅 BUILD PLAN (2 days remaining: Thu May 8 + Fri May 9 morning + 4hrs Sat)
+## 📅 BUILD PLAN (real calendar: Thu May 7 design done → Fri May 8 full build → Sat May 9 event)
 
-### Thursday 2026-05-08 — BUILD DAY 1 (scaffold + design)
+> **Date correction:** an earlier draft labeled May 8 as Thursday and May 9 as Friday — wrong. May 7 is Thursday, May 8 is Friday, May 9 is Saturday (event day). Fixed everywhere below.
+
+### Thursday 2026-05-07 — DESIGN + SCAFFOLD (DONE)
 - [x] `PROTOCOL_NOTES.md` — A2UI / AG-UI / MCP plain-English cheat sheet ✅ done 2026-05-07
 - [x] `ARCHITECTURE.md` — system diagram + tech stack + folder structure + agent prompt + A2UI contract ✅ done 2026-05-07
 - [x] `SCREENS.md` — wireframes + storyboard ✅ done 2026-05-07
 - [x] Project skeleton — FastAPI backend boots, React/Vite frontend ready, .gitignore + .env.example, git initialized + first commit ✅ done 2026-05-07
 - [x] MCP tool stubs (mocked) — 5 tools return Rita's demo data ✅ done 2026-05-07
-- [x] Statute data files — CA §1950.5 + TX §92.104 markdown snippets ✅ done 2026-05-07
-- [x] Agent system prompt v1 — with UI plan contract + guardrails ✅ done 2026-05-07
-- [ ] **Photos** — Avinash grabs 8 stock interior photos per `data/demo_photos/PHOTO_SHOPPING_LIST.md`
-- [ ] Mock landlord letter PDF — generated via `scripts/make_demo_letter.py` (next session)
-- [ ] Mock lease PDF — generated via `scripts/make_demo_lease.py` (next session)
-- [ ] Pydantic AI agent wired to Gemini 2.5 Flash + system prompt → emits valid `UIPlan` JSON for Rita's case (next session)
-- [ ] AG-UI WebSocket adapter — streams events as agent runs (next session)
-- [ ] Floor plan SVG component (5 rooms, Tailwind-colored) (next session)
+- [x] Statute snippet files — CA §1950.5 + TX §92.104 markdown drafts ✅ done 2026-05-07 (rewriting for accuracy 2026-05-08)
+- [x] Agent system prompt v1 ✅ done 2026-05-07 (rewriting for safer language 2026-05-08)
+- [x] Friction-killer + interactive-canvas design baked into all docs ✅ done 2026-05-08 early
+- [x] Accuracy / language / dates / stats pass (this commit) ✅ done 2026-05-08
 
-### Friday 2026-05-09 (morning + afternoon) — BUILD DAY 2 + FRICTION + POLISH
+### Friday 2026-05-08 — BUILD DAY (the only full build day)
 
 Follow `ARCHITECTURE.md` §10 build order, steps 3–18. Highlights:
-- Wire Pydantic AI agent + Gemini + system prompt → first valid UI plan JSON
-- AG-UI WebSocket adapter
-- Render the 7 A2UI components (incl. new `BulkPhotoBin`)
-- **Bulk photo dump + Gemini vision auto-classification** (P0 friction)
-- **Drag-drop photos onto floor-plan rooms** (interactive canvas)
-- **Voice on AG-UI chat** (P0 friction)
-- "Change one fact" reactive re-render
-- **Voice intake on landing** (P1 friction) + **auto-detect state** (P1)
-- TX state variant + state switcher
-- Real PDF demand letter (CA + TX)
-- HITL approval modal
-- Polish + Walmart palette pass + backup video record + 5 pitch rehearsals
-- [ ] Wire MCP tools (PDF reader, legal lookup, demand letter generator)
-- [ ] AG-UI streaming agent reasoning to UI panel
-- [ ] A2UI per-room cards (one per dispute type: paint card, cleaning card, damage card)
-- [ ] State switcher + Texas law variant (§92.104 baked in, different room colors, different card content)
-- [ ] Demand letter PDF generation (CA + TX templates)
-- [ ] Polish pass — Walmart blue.100 / spark.100, WCAG AA contrast check
-- [ ] **Record backup demo video** (safety net — mandatory)
+- [ ] **Photos** — Avinash grabs 8 stock interior photos per `data/demo_photos/PHOTO_SHOPPING_LIST.md` (5 min, do this first thing)
+- [ ] **Gemini API key** in `backend/.env` (free, https://aistudio.google.com/app/apikey)
+- [ ] Mock landlord letter PDF + mock lease PDF (ReportLab scripts)
+- [ ] Pydantic AI agent + Gemini wired → first real `UIPlan` JSON
+- [ ] AG-UI WebSocket adapter
+- [ ] Render the 7 A2UI components
+- [ ] **Bulk photo dump + Gemini vision auto-classification** (P0 friction)
+- [ ] **Drag-drop photos onto floor-plan rooms** (interactive canvas)
+- [ ] **Voice on AG-UI chat** (P0 friction)
+- [ ] **"Change one fact" reactive re-render** (the killer beat)
+- [ ] **Agent UI Plan inspector panel** (engineer-judge proof)
+- [ ] **Voice intake on landing** (P1 friction) + **auto-detect state** (P1)
+- [ ] TX state variant + state switcher (encore)
+- [ ] Real PDF draft letter (CA + TX templates, with "Draft / not legal advice" header)
+- [ ] HITL approval modal
+- [ ] Polish + Walmart palette pass
+- [ ] **Cache the demo agent responses** (offline fallback)
+- [ ] **Record backup demo video** (mandatory)
 - [ ] Pitch script v1 (15s open + 30s problem + 90s magic + 15s close)
-- [ ] Pitch rehearsal #1
+- [ ] Pitch rehearsal #1 + #2
 
-### Saturday 2026-05-09 — EVENT DAY (12:00 PM doors, 1–5 PM build, 5 PM demo)
+### Saturday 2026-05-09 — EVENT DAY (12:00 PM doors, 1–5 PM build/integrate, 5 PM demo)
 
 **Pre-event (before 12:00 PM)**
 - [ ] Sleep 7+ hours Friday night
-- [ ] Pitch rehearsal #2 at home
+- [ ] Pitch rehearsal #3 at home
 - [ ] Repo pushed; backup video uploaded; deck ready
 - [ ] Bring: laptop, charger, mouse, hotspot, HDMI/USB-C dongle
 
 **12:00–12:30 PM** Doors, food, scout
 **12:30 PM** Kickoff video — note tracks, prize categories beyond Mac Mini
-**1:00 PM** Build starts — grab starter kit + credits
+**1:00 PM** Build window starts — grab starter kit + credits
 
-**1:00–3:00 PM** — INTEGRATION (not build)
+**1:00–3:00 PM** — INTEGRATION (not new build)
 - Diff our pre-built code against the official starter kit
 - Swap mock keys for real ones from the starter kit
 - Confirm everything still runs end-to-end
 
 **3:00–4:00 PM** — POLISH
 - Final UI polish, copy pass, edge case fixes
-- Pitch rehearsal #3 + #4
+- Pitch rehearsal #4 + #5
 
 **4:00–4:45 PM** — DEMO PREP
 - Hard refresh all tabs, warm caches
 - Backup video on standby in another tab
-- Pitch rehearsal #5 — first 15s + last 15s memorized verbatim
+- First 15s + last 15s memorized verbatim
 
 **5:00 PM** — DEMO 🎯
 **5:30 PM** — SUBMIT (NOT 5:59 — Echo lesson)
@@ -280,9 +320,9 @@ Follow `ARCHITECTURE.md` §10 build order, steps 3–18. Highlights:
 
 4. **"Once-a-year use, not sticky."** Counter: none of the 6 actual hackathon winners (Blue Lens, Willmaker, Dental Tracks, Road Patrol, Project Cade, Skillsprout) were daily-sticky products. Hackathon judges reward MEMORABILITY, not retention. Willmaker is once-in-a-decade use and won 2nd place.
 
-5. **"What if California law changes / what if our prompt is wrong?"** Add a disclaimer card: *"RentProof helps you spot questions to raise. Confirm with a tenant rights attorney before filing."* Same disclaimer pattern as legal-tech competitors.
+5. **"What if California law changes / what if our prompt is wrong?"** The product never claims a charge is "illegal." Every verdict is framed as **"likely reasonable / needs more proof / worth challenging"**, every output letter is labeled **"Draft — this is not legal advice. Confirm with a tenant-rights attorney before filing in court."** Same disclaimer pattern as legal-tech competitors.
 
-6. **"The state switch demo moment feels gimmicky."** Counter: it's the literal reason A2UI exists. Show it as the "this would be 100 hardcoded screens without generative UI" moment.
+6. **"The state switch demo moment feels gimmicky."** Counter taken: state switching is now an *encore*, not the headline. The headline beat is **"change one fact"** (same case, agent re-evaluates) which is harder to fake and more visibly generative. State switch only runs if we have time and the room is engaged.
 
 ---
 

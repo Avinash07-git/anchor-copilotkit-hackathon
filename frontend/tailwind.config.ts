@@ -13,11 +13,12 @@ const config: Config = {
           green:  { 100: '#2a8703' },
           gray:   { 10:  '#f5f5f5', 50:  '#cfcfcf', 100: '#8a8a8a', 160: '#1a1a1a' },
         },
-        // Verdict semantic colors (always paired with icon + label for color-blind safety)
+        // Verdict semantic colors (always paired with icon + label for color-blind safety).
+        // Names mirror the Verdict union in src/types/uiPlan.ts.
         verdict: {
-          fair:      '#2a8703',  // green
-          ambiguous: '#ffc220',  // yellow
-          illegal:   '#ea1100',  // red
+          likely_reasonable: '#2a8703',  // green
+          needs_more_proof:  '#ffc220',  // yellow
+          worth_challenging: '#ea1100',  // red
         },
       },
       fontFamily: {

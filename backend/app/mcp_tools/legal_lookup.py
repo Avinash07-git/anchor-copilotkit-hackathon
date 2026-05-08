@@ -24,50 +24,54 @@ class StatuteResult(TypedDict):
 # Full statute text lives in the data/*.md files for the LawCitation component.
 _RULES: dict[tuple[State, DisputeType], StatuteResult] = {
     ("CA", "paint"): {
-        "statute_id": "CA Civil Code §1950.5(b)(3)",
+        "statute_id": "California Civil Code §1950.5",
         "statute_text": (
             "The repair of damages to the premises, exclusive of ordinary wear and tear, "
             "caused by the tenant or by a guest or licensee of the tenant."
         ),
         "plain_english_rule": (
-            "Paint is normal wear and tear after 2+ years of tenancy. Landlord cannot "
-            "deduct repaint costs after 2+ year tenancy unless tenant caused damage "
-            "exceeding normal wear."
+            "California lets a landlord deduct for damage beyond ordinary wear and tear. "
+            "Repainting due to fading or normal use after a multi-year tenancy is often "
+            "treated as ordinary wear and tear and is worth challenging. Painting to repair "
+            "tenant-caused damage (large holes, smoke, unauthorized colors) is generally "
+            "chargeable."
         ),
     },
     ("CA", "carpet_cleaning"): {
-        "statute_id": "CA Civil Code §1950.5(b)(3)",
+        "statute_id": "California Civil Code §1950.5",
         "statute_text": (
             "The cleaning of the premises upon termination of the tenancy necessary to "
             "return the unit to the same level of cleanliness it was in at the inception "
             "of the tenancy."
         ),
         "plain_english_rule": (
-            "Routine carpet cleaning is the landlord's responsibility unless the tenant "
-            "left damage beyond normal wear. Need move-in evidence to confirm baseline."
+            "Routine end-of-tenancy carpet cleaning is generally not deductible if the "
+            "carpet was clean at move-in and the tenant returned it in similar condition. "
+            "Move-in photos or a cleaning receipt strengthen the renter's case."
         ),
     },
     ("CA", "cleaning"): {
-        "statute_id": "CA Civil Code §1950.5(b)(3)",
+        "statute_id": "California Civil Code §1950.5",
         "statute_text": (
             "The cleaning of the premises upon termination of the tenancy necessary to "
             "return the unit to the same level of cleanliness it was in at the inception "
             "of the tenancy."
         ),
         "plain_english_rule": (
-            "Landlord can only charge cleaning needed to return unit to move-in cleanliness. "
-            "If tenant left it broom-clean, charge is illegal."
+            "A landlord can only charge cleaning needed to restore move-in cleanliness. "
+            "If the tenant left the unit broom-clean, the deduction is worth challenging."
         ),
     },
     ("CA", "damage"): {
-        "statute_id": "CA Civil Code §1950.5(b)(2)",
+        "statute_id": "California Civil Code §1950.5",
         "statute_text": (
             "The repair of damages to the premises, exclusive of ordinary wear and tear, "
             "caused by the tenant or by a guest or licensee of the tenant."
         ),
         "plain_english_rule": (
-            "Tenant pays only for damage beyond ordinary wear, prorated for the useful "
-            "life of the item. Old carpet/paint cannot be charged at full replacement cost."
+            "A tenant pays only for damage beyond ordinary wear, generally prorated for "
+            "the useful life of the item. Charging full replacement cost for an item past "
+            "its expected useful life is worth challenging."
         ),
     },
     ("TX", "paint"): {
@@ -77,8 +81,10 @@ _RULES: dict[tuple[State, DisputeType], StatuteResult] = {
             "normal wear and tear."
         ),
         "plain_english_rule": (
-            "Texas has no bright-line tenancy threshold like CA. Paint deduction is allowed "
-            "only for damage beyond normal wear. Long tenancy + only fading = illegal."
+            "Texas does not have a bright-line tenancy threshold like California. "
+            "Painting due to fading or age is generally normal wear; painting to repair "
+            "tenant-caused damage is generally chargeable. Long tenancy + only fading is "
+            "worth challenging."
         ),
     },
     ("TX", "carpet_cleaning"): {
@@ -88,8 +94,9 @@ _RULES: dict[tuple[State, DisputeType], StatuteResult] = {
             "damages and charges for which the tenant is legally liable under the lease."
         ),
         "plain_english_rule": (
-            "Texas leases often include carpet-cleaning clauses, generally enforceable. "
-            "Without an explicit clause, routine cleaning is landlord's responsibility."
+            "Texas leases often include carpet-cleaning clauses, which are generally "
+            "enforceable if reasonable. Without an explicit clause, routine cleaning is "
+            "more often the landlord's responsibility."
         ),
     },
     ("TX", "cleaning"): {
@@ -100,8 +107,9 @@ _RULES: dict[tuple[State, DisputeType], StatuteResult] = {
             "description and itemized list of all deductions."
         ),
         "plain_english_rule": (
-            "Cleaning fees enforceable if reasonable and itemized. Flat fee with no "
-            "itemization = ambiguous; request itemized statement."
+            "Cleaning fees are generally enforceable if reasonable and itemized. A flat "
+            "fee with no itemization needs more proof; the renter can request the "
+            "itemized statement."
         ),
     },
     ("TX", "damage"): {
@@ -113,8 +121,9 @@ _RULES: dict[tuple[State, DisputeType], StatuteResult] = {
             "attorney's fees."
         ),
         "plain_english_rule": (
-            "Tenant liable for damage beyond normal wear. Landlord must provide itemized "
-            "list within 30 days; failure forfeits right to deduct."
+            "A tenant is liable for damage beyond normal wear, but the landlord must "
+            "provide an itemized list within 30 days. Failure to do so may forfeit the "
+            "right to deduct — worth challenging."
         ),
     },
 }

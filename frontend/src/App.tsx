@@ -32,7 +32,7 @@ export default function App() {
           Your landlord kept your deposit?
         </h2>
         <p className="text-lg text-walmart-gray-100 mb-8">
-          We'll show you which charges are illegal — and write the demand letter to fight back.
+          We'll show you which deductions are worth challenging — and draft the response letter for you to review.
         </p>
 
         <button

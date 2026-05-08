@@ -209,7 +209,7 @@ Browser                          FastAPI                       Agent + LLM
   │                                │                             │
   │◄── event: tool_call(lookup_law, "CA", "paint")              │
   │                                │◄── tool result: §1950.5────┤
-  │◄── event: state_update("paint after 3y = illegal")          │
+  │◄── event: state_update("paint after 3y → worth challenging")    │
   │                                │                             │
   │◄── event: ui_plan_partial (FloorPlan + ConfidenceMeter)     │
   │   (renderer paints rooms)      │                             │
@@ -261,8 +261,11 @@ Browser                          FastAPI
 The agent's system prompt is the heart of the build. It enforces the "output a UI plan, not text" contract. Full prompt lives in `backend/app/prompts/system.md`. Skeleton:
 
 ```
-You are RentProof's investigator. You help renters dispute illegal
-security-deposit deductions.
+You are RentProof's investigator. You help renters figure out which
+security-deposit deductions are *worth challenging*. You are NOT a lawyer
+and you NEVER call a charge "illegal." Courts decide that. You produce
+evidence-backed verdicts: "likely reasonable," "needs more proof," or
+"worth challenging."
 
 ROLE
 - You are given: a deduction letter (PDF), a lease (PDF), photos.
@@ -272,36 +275,44 @@ TOOLS (MCP)
 - read_letter_pdf(path) → list of charges
 - read_lease_pdf(path) → tenancy_months, deposit_amount, signing_date
 - read_photo_metadata(path) → list of {filename, taken_at, room_label}
-- lookup_state_law(state, dispute_type) → statute text + plain-English rule
+- classify_photo(path) → {room, phase: movein|moveout|unknown, confidence}
+- lookup_state_law(state, dispute_type) → statute text + plain-English rule snippet
 - generate_demand_letter(state, charges_to_dispute, tenant_facts) → pdf_path
 
 INVESTIGATION ALGORITHM
 1. Call read_letter_pdf to get all charges.
 2. Call read_lease_pdf to get tenancy length + deposit.
-3. For each charge, call lookup_state_law(state, charge.type).
-4. Apply the rule: "is this charge legal given the facts?"
-   verdict ∈ {illegal, ambiguous, fair}
-5. For ambiguous verdicts, list missing evidence in a checklist.
-6. Compute confidence = (illegal_count * 1.0 + ambiguous * 0.5) / total
-7. Emit UI plan.
+3. For unclassified photos, call classify_photo and tag them.
+4. For each charge, call lookup_state_law(state, charge.type).
+5. Apply the rule: "given the lease, photos, tenancy, and rule snippet,
+   how should the renter treat this deduction?"
+   verdict ∈ {worth_challenging, needs_more_proof, likely_reasonable}
+6. For `needs_more_proof` verdicts, list missing evidence in a checklist.
+7. Compute confidence = (worth_challenging * 1.0 + needs_more_proof * 0.5) / total
+8. Emit UI plan.
 
 UI PLAN CONTRACT
 Output a single JSON object matching the UIPlan schema. Components:
 - ConfidenceMeter (always)
-- FloorPlan (always — derive room shapes from lease photos)
+- FloorPlan (always; rooms accept photo drops)
+- BulkPhotoBin (when there are unclassified or pending photos)
 - RoomCard (one per charged room)
-- LawCitation (one per illegal verdict)
-- EvidenceChecklist (when any ambiguous verdicts exist)
-- DemandLetterPreview (after demand letter generated)
+- LawCitation (one per `worth_challenging` verdict)
+- EvidenceChecklist (when any `needs_more_proof` verdicts exist)
+- DemandLetterPreview (after draft letter generated)
 
 When the user corrects a fact (e.g. "actually I lived there 6 months"),
 re-run the investigation algorithm with the override and emit a NEW UI plan.
+When the user drops a photo on a specific room, treat it as new evidence
+for that room and re-evaluate that room's verdict.
 
 GUARDRAILS
 - Never invent statutes. Only cite what lookup_state_law returned.
-- Always include a disclaimer in the demand letter: "Confirm with a tenant
-  rights attorney before filing in court."
-- If unsure, prefer "ambiguous" verdict and request evidence.
+- Never use the words "illegal," "stolen," "guaranteed," or "fight."
+  Use "worth challenging," "withheld," "draft," "likely."
+- Always include in the draft letter: "This is a draft. Confirm with a
+  tenant-rights attorney before filing in court."
+- If unsure, prefer `needs_more_proof` and request evidence.
 ```
 
 ---
@@ -377,8 +388,8 @@ Seven components. Each has a stable JSON shape the agent emits and the renderer 
   props: {
     room_id: string,        // matches FloorPlan room id
     charge_label: string,   // "$400 paint"
-    verdict: "illegal" | "ambiguous" | "fair",
-    one_liner: string       // "Paint after 3 yrs is normal wear (CA §1950.5)"
+    verdict: "worth_challenging" | "needs_more_proof" | "likely_reasonable",
+    one_liner: string       // "Paint after a 3-year tenancy is often treated as normal wear (CA §1950.5)"
   }
 }
 ```
@@ -388,12 +399,36 @@ Seven components. Each has a stable JSON shape the agent emits and the renderer 
 {
   type: "LawCitation",
   props: {
-    statute: string,        // "CA Civil Code §1950.5(b)(3)"
-    quote: string,          // verbatim statute snippet
-    plain_english: string,  // "Landlords can't charge for normal wear..."
+    statute: string,        // "California Civil Code §1950.5"
+    quote: string,          // verbatim statute snippet (kept short)
+    plain_english: string,  // "Landlords can deduct for damage beyond ordinary wear and tear, unpaid rent, and cleaning to move-in level."
+    why_worth_challenging: string,  // case-specific reasoning, e.g. "After a 3-year tenancy, repainting often falls within ordinary wear."
     applies_to_room: string // matches RoomCard room_id
   }
 }
+```
+
+### `UIPlanInspector` — NEW (engineer-judge proof, dev-facing)
+```typescript
+// Not a user-facing component — a collapsible side panel rendered by the
+// frontend whenever the developer-mode toggle is on (default: ON during demo).
+// Shows the live JSON list of components the agent composed, plus a diff
+// when the agent re-emits a new UI plan after "change one fact".
+//
+// Renders something like:
+//   Agent UI Plan v3  (delta from v2: 3 components changed)
+//   [
+//     "ConfidenceMeter (87 → 54)",
+//     "FloorPlan (bedroom: red → yellow)",
+//     "RoomCard:bedroom_paint (worth_challenging → needs_more_proof)",
+//     "LawCitation:bedroom (rewritten)",
+//     "EvidenceChecklist (+2 items)",
+//     "DemandLetterPreview (amount: $1,000 → $400)"
+//   ]
+//
+// Why: engineer judges will suspect we hardcoded templates. The inspector
+// makes A2UI visibly real. Toggle hidden by ?dev=0 query param if a
+// non-technical judge is in the room.
 ```
 
 ### `EvidenceChecklist`

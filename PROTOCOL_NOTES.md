@@ -61,7 +61,7 @@ A React SDK that implements AG-UI on the frontend so you can drop in `<CopilotCh
 ▸ found 3 charges ($400 paint, $600 carpet, $250 cleaning)
 ▸ reading lease… tenancy = 3 years, deposit = $2,500
 ▸ checking §1950.5 for paint…
-▸ paint after 3 years = normal wear → flagging illegal
+▸ paint after 3 years → often treated as normal wear → flagging worth_challenging
 ▸ updating bedroom → red
 ```
 Judges watch the agent THINK. That's the tension.
@@ -108,8 +108,8 @@ The agent has a **component kit** of 6 building blocks. After investigating, it 
           {"id": "living",  "color": "yellow", "shape": "rect", "x": 200, "y": 0, "w": 250, "h": 200},
           {"id": "kitchen", "color": "green", "shape": "rect", "x": 0, "y": 150, "w": 200, "h": 100}
         ] } },
-    { "type": "RoomCard", "props": { "room": "bedroom", "charge": "$400 paint", "verdict": "illegal" } },
-    { "type": "LawCitation", "props": { "statute": "CA Civ §1950.5(b)(3)", "text": "...", "applies_to": "bedroom" } },
+    { "type": "RoomCard", "props": { "room": "bedroom", "charge": "$400 paint", "verdict": "worth_challenging" } },
+    { "type": "LawCitation", "props": { "statute": "California Civil Code §1950.5", "text": "...", "applies_to": "bedroom" } },
     { "type": "EvidenceChecklist", "props": { "items": ["move-in paint photo", "lease end date confirmation"] } },
     { "type": "DemandLetterPreview", "props": { "pdf_url": "/preview/abc.pdf", "amount": 1200 } }
   ]
