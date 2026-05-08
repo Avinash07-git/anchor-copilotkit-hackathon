@@ -2,7 +2,7 @@
 
 > **Purpose:** The blueprint. Tech stack, system diagram, folder structure, data flow, agent brain, A2UI component contract. Build day = type out what's in this doc.
 >
-> **Last updated:** 2026-05-07 evening · **Status:** 🟢 Locked, design only — no code yet
+> **Last updated:** 2026-05-08 end-of-day (accuracy + safer-language pass + UIPlanInspector + BulkPhotoBin) · **Status:** 🟢 Design locked, scaffold shipped — build day is Friday May 8 (today)
 > **Companion docs:** `PROTOCOL_NOTES.md` (what each protocol does) · `SCREENS.md` (wireframes) · `RENTPROOF_SPEC.md` (product truth)
 
 ---

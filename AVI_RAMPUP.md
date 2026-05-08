@@ -3,7 +3,8 @@
 > **Fresh AI session?** Read `START_HERE.md` first (60 seconds), then `RENTPROOF_SPEC.md` (the source of truth). This file is the JOURNEY/CONTEXT — useful background but secondary.
 >
 > **Companion file:** `../AVINASH_HACKATHON_BRAIN.md` (cross-event persona + patterns + anti-patterns)
-> **Last updated:** 2026-05-07 evening · **Status:** 🟢 IDEA FROZEN — RentProof · **Event:** Saturday 2026-05-09 — **2 DAYS OUT**
+> **External feedback file:** `/Users/a0a0kbv/Documents/GPT Response.docx` — GPT review from 2026-05-08; all 8 items have been incorporated (see commits `b10aa06` + `b21e057`).
+> **Last updated:** 2026-05-08 end-of-day · **Status:** 🟢 Design + scaffold + GPT-review pass DONE · **Event:** Saturday 2026-05-09 — **build day is Friday May 8 (today)**
 
 ---
 
@@ -190,11 +191,12 @@ Pitched: PillLines (drug interaction calendar with red lines), ShotMap (vaccine 
 **Status:** 🟢 RentProof FROZEN. Build mode only.
 
 **Next session should:**
-1. Read `START_HERE.md` (60 sec)
+1. Read `START_HERE.md` (60 sec) — has the latest "what's done / what's next" snapshot
 2. Read `RENTPROOF_SPEC.md` (5 min) — the source of truth
 3. Read `IDEA_GRAVEYARD.md` (3 min) — do NOT resuggest killed ideas
-4. Open with: *"Ready to start on Thursday's build day 1 checklist?"*
-5. Begin scaffolding: PROTOCOL_NOTES.md, ARCHITECTURE.md, project skeleton
+4. Run `git log --oneline -10` to see what's actually shipped
+5. Open with: *"Caught up. Friday-build-day items remaining are X, Y, Z. Want me to start on the mock landlord-letter PDF + lease PDF generator first so the agent has something to read?"*
+6. Begin building per `ARCHITECTURE.md` §10 build order, picking up wherever the queue starts
 
 **Continuing-context rule:** After every working session, update `RENTPROOF_SPEC.md` Build Plan checkboxes. If a new pattern emerges that applies to FUTURE hackathons, also update `../AVINASH_HACKATHON_BRAIN.md`.
 

@@ -118,7 +118,7 @@ Component kit:
 3. `BulkPhotoBin` (when there are unclassified photos)
 4. `RoomCard` (one per charged room)
 5. `LawCitation` (one per "worth challenging" verdict)
-6. `EvidenceChecklist` (when ambiguous verdicts exist)
+6. `EvidenceChecklist` (when any `needs_more_proof` verdicts exist)
 7. `DemandLetterPreview` (after letter generated)
 
 Plus a developer-facing **Agent UI Plan inspector** (collapsible side panel) that displays the live JSON list of components the agent composed — visible proof for engineer judges that A2UI is real, not hardcoded.
@@ -343,6 +343,6 @@ When the next AI session opens:
 3. Read `IDEA_GRAVEYARD.md` — do NOT re-suggest killed ideas
 4. Read `AVI_RAMPUP.md` for context on the journey
 5. Skim `../AVINASH_HACKATHON_BRAIN.md` TL;DR section
-6. Start on Thursday's build checklist (top of the Build Plan section)
+6. Start on Friday's build checklist (top of the Build Plan section)
 
 **No more pivots. RentProof is locked. Build mode only.** 🟢
