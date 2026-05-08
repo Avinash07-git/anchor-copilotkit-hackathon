@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
 /**
- * RentProof — App shell.
- * v0.1: shows a "hello" landing + backend health probe.
- * v1.0: routes to Landing → Investigating → EvidenceRoom screens.
+ * Bedside — App shell.
+ * v0.1: hello landing + backend health probe.
+ * v1.0: full dashboard with the four layouts (calm / single_alert / dual_risk / combined_triage).
  */
 export default function App() {
   const [backend, setBackend] = useState<'unknown' | 'ok' | 'down'>('unknown');
@@ -18,7 +18,7 @@ export default function App() {
   return (
     <main className="min-h-screen bg-white text-walmart-gray-160">
       <header className="bg-walmart-blue-100 text-white px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">🏠 RentProof</h1>
+        <h1 className="text-xl font-semibold">🛏️ Bedside</h1>
         <span className="text-sm opacity-90">
           Backend:{' '}
           {backend === 'ok' && <span className="text-walmart-spark-100">●  online</span>}
@@ -29,10 +29,12 @@ export default function App() {
 
       <section className="max-w-3xl mx-auto px-6 py-16 text-center">
         <h2 className="text-4xl font-bold mb-4">
-          Your landlord kept your deposit?
+          The intelligent layer that was always missing.
         </h2>
         <p className="text-lg text-walmart-gray-100 mb-8">
-          We'll show you which deductions are worth challenging — and draft the response letter for you to review.
+          Three lenses, one app. The body, the mind, the caregiver. You text it
+          what you noticed. The dashboard rebuilds itself when something needs
+          your attention.
         </p>
 
         <button
@@ -40,13 +42,18 @@ export default function App() {
                      text-walmart-gray-160 font-semibold px-6 py-3 rounded-lg
                      transition-colors focus:outline-none
                      focus:ring-4 focus:ring-walmart-blue-100"
-          onClick={() => alert('Demo flow wired in build step 8.')}
+          onClick={() => alert('Demo flow wired in Saturday-morning build block.')}
         >
-          ✨ Try the demo with Rita's case
+          ✨ Open the Reynolds family dashboard
         </button>
 
         <p className="mt-12 text-sm text-walmart-gray-100">
-          Scaffold ready. Evidence Room components land in build steps 5–8.
+          Scaffold ready. Dashboard, components, and AG-UI streaming land in the
+          Saturday-morning build block.
+        </p>
+        <p className="mt-2 text-xs text-walmart-gray-100 italic">
+          Bedside is not a medical device. It surfaces patterns from what you
+          tell it, so you can share them with your healthcare team.
         </p>
       </section>
     </main>

@@ -1,10 +1,10 @@
 # 🧠 AVI RAMPUP — Generative UI Hackathon (Hack #3)
 
-> **Fresh AI session?** Read `START_HERE.md` first (60 seconds), then `RENTPROOF_SPEC.md` (the source of truth). This file is the JOURNEY/CONTEXT — useful background but secondary.
+> **Fresh AI session?** Read `START_HERE.md` first (60 seconds), then `BEDSIDE_SPEC.md` (the source of truth). This file is the JOURNEY/CONTEXT — useful background but secondary.
 >
 > **Companion file:** `../AVINASH_HACKATHON_BRAIN.md` (cross-event persona + patterns + anti-patterns)
-> **External feedback file:** `/Users/a0a0kbv/Documents/GPT Response.docx` — GPT review from 2026-05-08; all 8 items have been incorporated (see commits `b10aa06` + `b21e057`).
-> **Last updated:** 2026-05-08 end-of-day · **Status:** 🟢 Design + scaffold + GPT-review pass DONE · **Event:** Saturday 2026-05-09 — **build day is Friday May 8 (today)**
+> **External feedback file:** `/Users/a0a0kbv/Documents/GPT Response.docx` — GPT review from 2026-05-08; was incorporated into RentProof (now archived).
+> **Last updated:** 2026-05-08 late evening · **Status:** 🔄 PIVOTED RentProof → **Bedside** (CareOS reframed) · **Event:** Saturday 2026-05-09 — building Friday evening + Saturday morning
 
 ---
 
@@ -116,15 +116,37 @@ Pitched: PillLines (drug interaction calendar with red lines), ShotMap (vaccine 
 - **RentRadar** (full lease lifecycle: sign + renew + move-out) pitched to fix stickiness. **Killed:** Too broad for 3-min demo, didn't actually solve stickiness, all 6 winners did ONE thing well.
 - **RentProof** = narrowed back to deduction-letter dispute only. **Locked.**
 
-### 🟢 FINAL: RentProof
-- Color-coded floor plan visual
-- Cloned shape from Willmaker (proven 2nd place winner)
-- Per-state UI rebuild = killer A2UI moment
-- Universal pain (every renter)
-- Tangible output (legal demand letter PDF)
-- Solo-buildable in 2 days
+### ⚰️ Round 8 — RentProof KILLED Friday evening (May 8)
+After scaffolding RentProof + incorporating GPT review feedback, Avinash and Avi stress-tested the idea on the night of May 8. Killed for:
+1. **Once-a-year transaction** — no continuous signal, no reason to come back
+2. **A capable user with Manus or Claude could one-shot ~85% of the value** in a single prompt → no structural moat against general agents
+3. **Floor-plan visual was decoration** — a bulleted list delivers ~90% of the same info
+4. **"Change tenancy" killer beat fell apart on realism** — a renter who moved out *knows* their tenancy, would never run scenarios
+5. **Crowded category** (DoNotPay, Rentrieve, DepositGenie, JustFix)
+6. **Avinash genuinely lost conviction** — and pitch energy on stage is the single biggest variable
 
-**See `RENTPROOF_SPEC.md` for the full frozen spec.**
+Design docs preserved at `archive/rentproof_design/` for reference.
+
+### Round 9 — CareOS resurfaced as Bedside (LOCKED late evening May 8)
+Avinash brought back the CareOS blueprint from his own notes. Re-evaluated honestly:
+- **CareOS Round 4 was killed** for being a vague "command center for caregivers" in a crowded space (Honor, CareLinx, Papa, Carewell)
+- **Bedside is the same idea reframed sharply:**
+  1. Three lenses simultaneously (body / mind / **caregiver**) — the caregiver lens is the wedge nobody else has
+  2. Safer language throughout ("smart family notebook," no clinical claims)
+  3. The combined-triage view (all three at risk → agent composes a layout that's never existed) is the purest A2UI moment of any idea we've considered
+- Continuous signal (multi-day observation logs) silences the "chatbot could do this" critique
+- Sandwich-generation American family (Tom 68 + Helen 84 + Sarah 42) — 1-in-4 judges relate immediately
+
+### 🟢 FINAL: Bedside
+- Three lenses, one app
+- Calm-dashboard → single-alert → dual-risk → combined-triage layout progression
+- 9 A2UI components composed by the agent per family + per moment
+- 8 MCP tools doing real work (NLP signal extraction, score calc, pattern matching, support lookup)
+- AG-UI streams agent reasoning live + handles human-in-loop approval (drafted message to Sarah's brother)
+- Tangible "output": a printable list of talking points for Tom's next cardiology visit + a draft message to family backup
+- Solo-buildable in ~12 focused hours — we have ~21
+
+**See `BEDSIDE_SPEC.md` for the full frozen spec.**
 
 ---
 
@@ -188,16 +210,16 @@ Pitched: PillLines (drug interaction calendar with red lines), ShotMap (vaccine 
 
 ## 📞 IMMEDIATE NEXT STEPS
 
-**Status:** 🟢 RentProof FROZEN. Build mode only.
+**Status:** 🟢 Bedside FROZEN. Build only.
 
 **Next session should:**
 1. Read `START_HERE.md` (60 sec) — has the latest "what's done / what's next" snapshot
-2. Read `RENTPROOF_SPEC.md` (5 min) — the source of truth
-3. Read `IDEA_GRAVEYARD.md` (3 min) — do NOT resuggest killed ideas
-4. Run `git log --oneline -10` to see what's actually shipped
-5. Open with: *"Caught up. Friday-build-day items remaining are X, Y, Z. Want me to start on the mock landlord-letter PDF + lease PDF generator first so the agent has something to read?"*
-6. Begin building per `ARCHITECTURE.md` §10 build order, picking up wherever the queue starts
+2. Read `BEDSIDE_SPEC.md` (5 min) — the source of truth
+3. Read `IDEA_GRAVEYARD.md` (3 min) — do NOT resuggest killed ideas (RentProof now killed too)
+4. Run `git log --oneline -15` to see what's actually shipped
+5. Open with: *"Caught up. Next item in the build plan is X. Starting now."*
+6. Begin building per `BEDSIDE_SPEC.md` §11 build plan, picking up wherever the queue starts
 
-**Continuing-context rule:** After every working session, update `RENTPROOF_SPEC.md` Build Plan checkboxes. If a new pattern emerges that applies to FUTURE hackathons, also update `../AVINASH_HACKATHON_BRAIN.md`.
+**Continuing-context rule:** After every working session, update `BEDSIDE_SPEC.md` Build Plan checkboxes. If a new pattern emerges that applies to FUTURE hackathons, also update `../AVINASH_HACKATHON_BRAIN.md`.
 
 Let's go win those Mac Minis. 🏆

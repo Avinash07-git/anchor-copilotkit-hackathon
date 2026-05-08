@@ -3,7 +3,7 @@
 > Every idea we considered for the Generative UI Hackathon (Hack #3) and why it died.
 > If you (future AI session) are tempted to suggest any of these, DON'T. They've been killed for specific reasons. Read the reason, learn the pattern, generate something new instead.
 >
-> Last updated: 2026-05-07 evening · Status: RentProof FROZEN — graveyard locked
+> Last updated: 2026-05-08 late evening · Status: PIVOTED to **Bedside** (CareOS reframed). RentProof now archived too. Graveyard locked.
 
 ---
 
@@ -74,14 +74,28 @@ Every kill came from one of these failure modes:
   3. The 6 actual hackathon winners all did ONE thing well (Willmaker = wills only, Dental Tracks = records only, Road Patrol = potholes only) — stickiness wasn't what made them win
   4. Build risk too high for 3 days
 
-## ✅ FROZEN: RentProof
-- Narrow scope: deduction-letter dispute only
-- Color-coded floor plan visual (5-year-old can describe)
-- Cloned shape from Willmaker (proven 2nd place winner)
-- Universal pain (every renter has been screwed)
-- Per-state UI rebuild = killer A2UI moment
-- Tangible output (legal demand letter PDF)
-- Solo-buildable in 2 days
+## ⚰️ Round 8 — RentProof (KILLED Friday evening)
+- Survived rounds 1-7 and was scaffolded → killed when Avinash and Avi together stress-tested it on the night of May 8
+- **Why killed:**
+  1. Move-out deduction is a **once-a-year transaction** — no continuous signal, no reason to come back
+  2. A capable user with Manus or Claude + file upload could one-shot ~85% of the value in a single prompt → no structural moat against general agents
+  3. Floor-plan visual was honestly closer to decoration than load-bearing Gen UI (a bulleted list of charges + verdicts delivers ~90% of the same information)
+  4. The killer beat ("change tenancy 6mo → 3yr → bedroom flips") fell apart on realism check — a renter who moved out **knows** their tenancy, would never run scenarios
+  5. Crowded category (DoNotPay, Rentrieve, DepositGenie, JustFix, DefendMyRent)
+  6. After multiple sharpening passes Avinash genuinely lost conviction in the idea — and pitch energy is the single biggest variable on stage
+- Design docs preserved at `archive/rentproof_design/` for reference
+
+## ✅ FROZEN (Round 9): Bedside
+- Reframe of CareOS (Round 4) with three crucial differences:
+  1. Scope = three lenses simultaneously (body / mind / **caregiver**) → caregiver lens is the original wedge nobody else has
+  2. Safer language throughout — "smart family notebook" framing, no clinical claims, no medical-device territory
+  3. The combined-triage view (all three at risk → agent composes layout that's never existed) is the purest A2UI moment of any idea we've considered
+- Continuous signal (multi-day observation logs) silences the "chatbot could do this" critique that killed RentProof
+- Sandwich-generation family (Tom 68 + Helen 84 + Sarah 42) → 1-in-4 judges relate immediately
+- Why this version of CareOS is *not* the one we killed in Round 4:
+  - Original CareOS = vague "command center for caregivers" → killed for being crowded (Honor, CareLinx, Papa, Carewell)
+  - Bedside = sharp 3-lens framing with a specific climax moment, and competitors all watch the *patient* — Bedside's wedge is watching the **caregiver** too
+- See `BEDSIDE_SPEC.md` for the full spec
 
 ---
 
@@ -96,4 +110,4 @@ If you're tempted to suggest a NEW idea, run it through:
 5. **Avinash's life-related test** — Would a non-technical person Rita Sharma type understand and want this? If only engineers care, kill.
 6. **Solo 3-day build test** — Can ONE person build a working demo in 3 days? If you need 5 integrations or live data feeds, kill.
 
-**RentProof passes all 6.** That's why it's frozen. Don't unfreeze it. Build it.
+**Bedside passes all 6.** That's why it's frozen. Don't unfreeze it. Build it.

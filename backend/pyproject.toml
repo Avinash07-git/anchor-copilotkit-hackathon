@@ -1,7 +1,7 @@
 [project]
-name = "rentproof-backend"
+name = "bedside-backend"
 version = "0.1.0"
-description = "RentProof — AI investigator + evidence room builder for renter deposit disputes"
+description = "Bedside — the intelligent layer that was always missing. Three lenses, one app."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -10,9 +10,6 @@ dependencies = [
     "pydantic>=2.9.0",
     "pydantic-ai>=0.0.13",
     "python-multipart>=0.0.12",
-    "pdfplumber>=0.11.0",
-    "reportlab>=4.2.0",
-    "pillow>=11.0.0",
     "python-dotenv>=1.0.1",
     "websockets>=13.0",
     "mcp>=1.0.0",

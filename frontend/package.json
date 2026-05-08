@@ -1,5 +1,5 @@
 {
-  "name": "rentproof-frontend",
+  "name": "bedside-frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -23,5 +23,5 @@
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
   },
-  "//": "CopilotKit + AG-UI client + A2UI bridge will be added in build steps 6-7"
+  "//": "CopilotKit + AG-UI client + A2UI bridge added in Saturday-morning build block"
 }

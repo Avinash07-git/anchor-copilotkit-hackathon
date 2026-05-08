@@ -1,6 +1,6 @@
-"""RentProof backend package.
+"""Bedside backend package.
 
-An AI investigator that builds a custom evidence room for renter deposit disputes.
+The intelligent layer that was always missing — three lenses, one app.
 """
 
 __version__ = "0.1.0"

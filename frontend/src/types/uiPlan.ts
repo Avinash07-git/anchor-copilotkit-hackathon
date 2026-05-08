@@ -1,120 +1,165 @@
-/**
- * UI Plan types — must match the backend `app/ui_plan.py` Pydantic models.
- * The agent emits these; the React renderer interprets them.
- *
- * Verdicts are framed as actionable advice, NOT legal conclusions:
- *   - worth_challenging  → renter has a defensible argument to push back
- *   - needs_more_proof   → could go either way; gather the listed evidence
- *   - likely_reasonable  → deduction looks fair; renter probably shouldn't contest
- */
+// Bedside UI Plan types — mirrors backend/app/ui_plan.py exactly.
+//
+// The agent emits a UIPlan as JSON; the React renderer interprets it and
+// mounts the right A2UI components inside the chosen layout. See
+// BEDSIDE_SPEC.md §6 + §7. Keep this file in sync with the Python models —
+// the FastAPI layer validates outgoing plans against Pydantic, but the
+// React renderer trusts these types.
 
-export type Verdict =
-  | 'worth_challenging'
-  | 'needs_more_proof'
-  | 'likely_reasonable';
-export type Color = 'green' | 'yellow' | 'red' | 'gray';
-export type State = 'CA' | 'TX';
-export type PhotoPhase = 'movein' | 'moveout' | 'unknown';
+export type Lens = 'body' | 'mind' | 'caregiver';
+export type Color = 'green' | 'yellow' | 'amber' | 'red' | 'gray';
+export type LayoutKind =
+  | 'calm_dashboard'
+  | 'single_alert'
+  | 'dual_risk'
+  | 'combined_triage';
 
-export interface ConfidenceMeterProps {
-  score: number;          // 0-100
-  label?: string;
-  color?: 'green' | 'yellow' | 'red';
-}
+export type PersonId = 'tom' | 'helen' | 'sarah';
 
-export interface FloorPlanRoom {
-  id: string;
-  label: string;
-  shape: 'rect';
-  x: number; y: number; w: number; h: number;
+// --- Component prop types -------------------------------------------------
+
+export interface DriftScoreCardProps {
+  person_id: PersonId;
+  display_name: string;
+  age: number;
+  lens: Lens;
+  lens_label: string;
+  score: number; // 0-100
   color: Color;
-  /** Thumbnail URLs for photos already classified into this room. */
-  photo_thumbs?: string[];
-  /** Whether this room accepts photo drops from the BulkPhotoBin. */
-  accepts_drop?: boolean;
-  on_click?: string;
-}
-
-export interface FloorPlanProps {
-  width: number;
-  height: number;
-  rooms: FloorPlanRoom[];
-}
-
-export interface BulkPhotoBinClassified {
-  file_id: string;
-  thumb_url: string;
-  room_label: string;
-  phase: PhotoPhase;
-  confidence: number;     // 0.0 - 1.0
-}
-
-export interface BulkPhotoBinPending {
-  file_id: string;
-  thumb_url: string;
-}
-
-export interface BulkPhotoBinProps {
-  title?: string;
-  accepts?: string[];     // MIME types
-  classified?: BulkPhotoBinClassified[];
-  pending?: BulkPhotoBinPending[];
-}
-
-export interface RoomCardProps {
-  room_id: string;
-  charge_label: string;
-  verdict: Verdict;
+  trend: 'up' | 'down' | 'flat';
   one_liner: string;
+  last_updated: string; // ISO datetime
 }
 
-export interface LawCitationProps {
-  statute: string;
-  quote: string;
-  plain_english: string;
-  /** Case-specific reasoning, not a flat legal claim. */
-  why_worth_challenging: string;
-  applies_to_room: string;
-}
-
-export interface EvidenceChecklistItem {
+export interface SignalEntry {
+  day_label: string;
   text: string;
-  checked: boolean;
+  extracted_signal: string;
 }
 
-export interface EvidenceChecklistProps {
-  title?: string;
-  items: EvidenceChecklistItem[];
+export interface PatternAlertCardProps {
+  person_id: PersonId;
+  pattern_id: string;
+  severity_color: Color;
+  title: string;
+  why_it_matters: string;
+  signals: SignalEntry[];
+  suggested_actions: string[];
+  disclaimer: string;
 }
 
-export interface DemandLetterPreviewProps {
-  pdf_url: string;
-  amount_disputed: number;
-  state: State;
-  requires_approval: boolean;
-  actions: Array<'approve' | 'edit' | 'download'>;
-  disclaimer?: string;
+export interface ContributorEntry {
+  observer_id: string;
+  observer_display: string;
+  observer_where: string;
+  day_label: string;
+  note: string;
 }
 
-export type Component =
-  | { type: 'ConfidenceMeter';      props: ConfidenceMeterProps }
-  | { type: 'FloorPlan';            props: FloorPlanProps }
-  | { type: 'BulkPhotoBin';         props: BulkPhotoBinProps }
-  | { type: 'RoomCard';             props: RoomCardProps }
-  | { type: 'LawCitation';          props: LawCitationProps }
-  | { type: 'EvidenceChecklist';    props: EvidenceChecklistProps }
-  | { type: 'DemandLetterPreview';  props: DemandLetterPreviewProps };
+export interface ContributorMapProps {
+  person_id: 'helen';
+  title: string;
+  baseline_rate_per_month: number;
+  this_week_count: number;
+  acceleration_factor: number;
+  contributors: ContributorEntry[];
+}
+
+export interface TalkingPointsCardProps {
+  title: string;
+  audience: string;
+  bullets: string[];
+  disclaimer: string;
+}
+
+export interface SupportOption {
+  name: string;
+  kind: string;
+  phone: string | null;
+  distance_mi: number;
+}
+
+export interface RespiteOptionsCardProps {
+  title: string;
+  options: SupportOption[];
+  note: string;
+}
+
+export interface SignalTimelineProps {
+  person_id: PersonId;
+  days: Array<{ day: number; color: Color; label: string }>;
+}
+
+export interface QuickActionCardProps {
+  icon: 'phone' | 'message' | 'calendar' | 'checklist' | 'info';
+  title: string;
+  description: string;
+  cta_label: string;
+  cta_kind: 'safe' | 'needs_approval';
+}
+
+export interface ApprovalPromptProps {
+  prompt: string;
+  draft_preview: string;
+  approve_label: string;
+  edit_label: string;
+  decline_label: string;
+}
+
+export interface TriageRow {
+  person_id: PersonId;
+  display_name: string;
+  lens_label: string;
+  color: Color;
+  headline: string;
+  recommended_first_action: string;
+}
+
+export interface CombinedTriageViewProps {
+  title: string;
+  rationale: string;
+  rows: TriageRow[]; // ordered by agent's chosen priority
+  disclaimer: string;
+}
+
+// --- Component envelope ---------------------------------------------------
+
+export type ComponentType =
+  | 'DriftScoreCard'
+  | 'PatternAlertCard'
+  | 'ContributorMap'
+  | 'TalkingPointsCard'
+  | 'RespiteOptionsCard'
+  | 'SignalTimeline'
+  | 'QuickActionCard'
+  | 'ApprovalPrompt'
+  | 'CombinedTriageView';
+
+export interface Component {
+  type: ComponentType;
+  // The renderer narrows props by component type at the switch site.
+  props: Record<string, unknown>;
+}
+
+// --- Layout slots (only for dual_risk) -----------------------------------
+
+export interface DualRiskSlots {
+  left_panel: Component[];
+  right_panel: Component[];
+}
+
+// --- Top-level UIPlan -----------------------------------------------------
 
 export interface UIPlanMeta {
-  case_id: string;
-  state: State;
-  /** Increments on each agent re-emit; the UIPlanInspector dev panel shows the diff. */
-  plan_version?: number;
-  last_updated: string;  // ISO 8601
+  family_id: string;
+  plan_version: number;
+  triggered_by: string | null;
+  last_updated: string;
 }
 
 export interface UIPlan {
-  layout: 'evidence_room';
+  layout: LayoutKind;
   components: Component[];
+  slots?: DualRiskSlots; // only present when layout === 'dual_risk'
   meta: UIPlanMeta;
 }

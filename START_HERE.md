@@ -1,108 +1,103 @@
 # 🟢 START HERE — Fresh Session Onboarding
 
-> If you are an AI session that just got handed this project, read this file FIRST. It takes 60 seconds and will save Avinash from re-explaining everything.
+> If you are an AI session that just got handed this project, read this file FIRST. 60 seconds. Saves Avinash from re-explaining everything.
 
 ---
 
-## 🚨 STATUS AS OF 2026-05-08 (END OF DAY 1)
+## 🚨 STATUS AS OF 2026-05-08 LATE EVENING
 
-**🔒 IDEA + DESIGN ARE FROZEN. SAFER-LANGUAGE PASS IS DONE. SCAFFOLD IS DONE. NO MORE PIVOTS.**
+**🔒 PIVOTED FROM RentProof → Bedside. Locked. Building now.**
 
-We are building **RentProof** — *"An AI investigator that builds renters a custom evidence room for their security-deposit dispute. Change a fact → the room rebuilds itself."*
+We are building **Bedside** — *"The intelligent layer that was always missing. Three lenses, one app — the patient's body, the patient's mind, and the caregiver's breaking point. You text it what you notice. The dashboard rebuilds itself when something needs your attention."*
 
 **Event:** Generative UI Hackathon (A2UI + AG-UI + MCP Apps)
 **Date:** **Saturday 2026-05-09** (event day — under 24 hrs out)
-**Today is:** Friday 2026-05-08 (the only full build day before event)
+**Today:** Friday 2026-05-08 evening
 **Venue:** San Francisco
 **Mode:** Solo
 **Goal:** Win Mac Minis 🥇
 
-> **Date discipline:** May 7 = Thursday, **May 8 = Friday**, **May 9 = Saturday**. An earlier draft had this wrong; it's fixed everywhere now (commit `b21e057`).
-
 ---
 
-## 📦 What's already shipped (don't redo this)
+## 📦 What's already shipped
 
-- ✅ Design phase: `RENTPROOF_SPEC.md`, `PROTOCOL_NOTES.md`, `ARCHITECTURE.md`, `SCREENS.md` all locked
-- ✅ Scaffold: FastAPI backend boots, React/Vite frontend skeleton, Walmart Tailwind palette, .gitignore + .env.example, MCP tool stubs (5 tools), CA §1950.5 + TX §92.104 statute briefs, agent system prompt v1
-- ✅ **GPT-review feedback fully incorporated** (commit `b10aa06` + `b21e057`). The review lives at `/Users/a0a0kbv/Documents/GPT Response.docx` and addressed: safer language ("worth_challenging" / "needs_more_proof" / "likely_reasonable" instead of "illegal" / "ambiguous" / "fair"), accurate CA §1950.5 framing, verifiable stats (44M renters, 85% paid deposit, AB 12, April-2025 photo-proof rule, SF 4.2% interest) instead of the fake "$4.5B stolen", "change one fact" as the headline A2UI beat (state-switch demoted to encore), `UIPlanInspector` dev panel for engineer judges, `BulkPhotoBin` + drag-drop photos onto FloorPlan rooms, voice intake + voice corrections, mandatory disclaimer on the draft letter, build-plan date fix.
+- ✅ Pivot decision committed: RentProof archived to `archive/rentproof_design/`
+- ✅ `BEDSIDE_SPEC.md` written — single source of truth (read this first)
+- ✅ Reusable scaffold from RentProof: FastAPI shell, React/Vite, Walmart Tailwind palette, .gitignore, .env.example
+- ✅ Family chosen: **Tom Reynolds** (68, post-cardiac), **Helen Reynolds** (84, dementia, Tom's mom), **Sarah Reynolds** (42, Tom's wife, sole caregiver)
 
-## 🚧 What's NOT done yet (this is the build queue)
+## 🚧 What's NOT done yet (Friday-evening + Saturday-morning queue)
 
-- ⏳ Mock landlord-letter PDF + mock lease PDF (need `scripts/make_demo_*.py`)
-- ⏳ Demo photos (Avinash grabs — see `backend/app/data/demo_photos/PHOTO_SHOPPING_LIST.md`)
-- ⏳ Pydantic AI agent wired to Gemini → emits valid `UIPlan` JSON for Rita's case
-- ⏳ AG-UI WebSocket adapter (CopilotKit + Pydantic AI adapter)
-- ⏳ The 7 A2UI components rendered + the dev-only `UIPlanInspector` panel
-- ⏳ Bulk-photo dump + Gemini-vision auto-classification + drag-drop onto FloorPlan rooms
-- ⏳ Voice intake on landing + voice corrections in chat
-- ⏳ "Change one fact" reactive re-render
-- ⏳ TX state variant + state switcher (encore beat)
-- ⏳ Real PDF generation (CA + TX templates) via ReportLab
-- ⏳ HITL approval modal for the draft letter
-- ⏳ Walmart-palette polish + WCAG AA pass
-- ⏳ Backup demo video recorded
-- ⏳ 5 pitch rehearsals
+### Friday evening (target: 6 hours of build, ~end at midnight)
+- ⏳ Pre-loaded demo dataset module (`backend/app/data/demo_dataset.py`)
+- ⏳ Safer-language constants file (`backend/app/data/language_rules.py`)
+- ⏳ UI plan models rewrite — 10 components, 4 layouts (`backend/app/ui_plan.py`)
+- ⏳ 8 MCP tools (parse_observation_log, update_wellbeing_score, check_pattern_match, get_pattern_context, find_local_support, draft_talking_points, log_observation, calculate_observation_rate)
+- ⏳ Agent prompt v1 (`backend/app/prompts/system.md`) — Pydantic AI + Claude Sonnet
+- ⏳ Scripted-trigger endpoints (`/demo/uc1`, `/uc2`, `/uc3`, `/combined`, `/reset`)
+- ⏳ Smoke test: each trigger produces correct UIPlan JSON
+
+### Saturday morning (target: 6 hours, end by 1pm)
+- ⏳ React renderer for 10 components + 4 layout wrappers
+- ⏳ AG-UI streaming wired (CopilotKit adapter)
+- ⏳ UIPlanInspector debug panel (collapsible JSON viewer)
+- ⏳ Walmart palette + WCAG AA pass
+- ⏳ Pitch script + 5 dry runs + record backup video
 
 ---
 
 ## 📖 Read these files in this order
 
-1. **`RENTPROOF_SPEC.md`** — product truth: pitch, demo arc, scope, build plan
-2. **`PROTOCOL_NOTES.md`** — plain-English cheat sheet for A2UI / AG-UI / MCP. Read this BEFORE you try to defend the protocol fit to anyone
-3. **`ARCHITECTURE.md`** — the blueprint. Tech stack, system diagram, folder structure, data flow, agent system prompt, A2UI component kit JSON contract, build order
-4. **`SCREENS.md`** — wireframes for every screen, the killer storyboard, the visual language (Walmart palette, WCAG AA, color-blind-safe verdict labels)
-5. **`IDEA_GRAVEYARD.md`** — every idea we killed and why. **Do NOT re-suggest any of them**
-6. **`AVI_RAMPUP.md`** — the journey (Rounds 1–7 of brainstorming). Background only
-7. **`../AVINASH_HACKATHON_BRAIN.md`** — cross-event persona. **TL;DR section is mandatory reading**
+1. **`BEDSIDE_SPEC.md`** — product truth: pitch, 3 use cases, demo flow, components, build plan, safer-language rules. **Read end-to-end.**
+2. **`IDEA_GRAVEYARD.md`** — every idea we killed (RentProof now archived too). **Do NOT re-suggest.**
+3. **`AVI_RAMPUP.md`** — the journey (Rounds 1–7 of brainstorming). Background only.
+4. **`../AVINASH_HACKATHON_BRAIN.md`** — cross-event persona. **TL;DR section is mandatory.**
+5. **`archive/rentproof_design/`** — the previous direction. Reference only — do not revive.
 
 ---
 
 ## ⚡ Critical context in 30 seconds
 
-- **Who:** Avinash. Walmart employee. Director-not-coder (he directs, AI executes)
-- **Goal:** Win Mac Minis Saturday May 9. **Non-negotiable** — winning gives him credibility within Walmart
-- **Past hackathons:** 1 win (AI Ops Lab, April 25), 1 loss (Echo, May 2). Echo lost because the topic was generic. He is HYPER-ALLERGIC to anything cliche, generic, B2B-dev-tooling, or "two-prompts-away"
-- **This event:** Must use 3 protocols (A2UI, AG-UI, MCP Apps). Solo. Saturday is event day (12:00 PM doors, 1–5 PM build, 5 PM demo). Engineer-heavy judges (the protocol creators themselves)
-- **Where we are:** RentProof is FROZEN, scaffold is DONE, GPT-review feedback is INCORPORATED. **Friday May 8 is the only full build day.** Build mode only
+- **Who:** Avinash. Walmart employee. Director-not-coder (he directs, AI executes).
+- **Goal:** Win Mac Minis Saturday May 9. Non-negotiable — winning gives him credibility within Walmart.
+- **Past hackathons:** 1 win (AI Ops Lab), 1 loss (Echo). Echo lost because the topic was generic. Avinash is HYPER-ALLERGIC to generic, B2B-dev-tooling, or "two-prompts-away" ideas.
+- **This event:** Must use 3 protocols (A2UI, AG-UI, MCP Apps). Solo. Saturday is event day (12pm doors, 1–5pm build, 5pm demo). Engineer-heavy judges (the protocol creators themselves).
+- **Where we are:** Bedside is FROZEN, scaffold is partly reusable, **no more idea pivots.** Build mode only.
 
 ---
 
-## 🚨 Do NOT do these things (recurring mistakes from this thread)
+## 🚨 Do NOT do these things
 
-1. ❌ Do NOT suggest a new idea. RentProof is frozen. If Avinash says he wants to pivot, push back hard — we're under 24 hours from event day
-2. ❌ Do NOT use jargon ("load-bearing," "non-obvious application," etc.). Plain English. Avinash will call you out instantly
-3. ❌ Do NOT pitch B2B / dev tooling / "Cursor for X" ideas. They live in `IDEA_GRAVEYARD.md`
-4. ❌ Do NOT propose ideas reachable in 2 ChatGPT prompts
-5. ❌ Do NOT say "your mom" in examples. Use **Rita Sharma** as the named user
-6. ❌ Do NOT give long responses with 5 tables when Avinash asks a clarification question. Tight, plain English, end with a clear question
-7. ❌ Do NOT settle when Avinash pushes back. Take it seriously, think harder, come back better
-8. ❌ Do NOT bug Avinash about non-actionable info (city, URL, judging tier). He handles event logistics
-9. ❌ Do NOT re-introduce the words **"illegal," "stolen," "fight," "guaranteed"** anywhere user-facing. The safer-language pass is locked. (References to these words in disclaimers and "do not say" lists are fine — those are documenting the rule.)
-10. ❌ Do NOT make changes the user didn't ask for. If you spot something worth fixing, **ask first**. (A previous Avi instance went rogue and had to be rolled back.)
+1. ❌ Do NOT suggest a new idea. Bedside is frozen. We are <24h from event day.
+2. ❌ Do NOT re-introduce clinical language. **Safer-language rules** in `BEDSIDE_SPEC.md` §10 are non-negotiable. No "diagnose," "cardiac drift," "treat," "medical advice," "you should." Use observational/wellness phrasing only.
+3. ❌ Do NOT use jargon ("load-bearing," "non-obvious application"). Plain English. Avinash will call you out.
+4. ❌ Do NOT pitch B2B / dev tooling / "Cursor for X." See `IDEA_GRAVEYARD.md`.
+5. ❌ Do NOT propose ideas reachable in 2 ChatGPT prompts.
+6. ❌ Do NOT give long responses with 5 tables when Avinash asks a clarification question. Tight, plain English, end with a clear question.
+7. ❌ Do NOT settle when Avinash pushes back. Take it seriously, think harder, come back better.
+8. ❌ Do NOT bug Avinash about non-actionable info (city, URL, judging tier). He handles event logistics.
+9. ❌ Do NOT make changes the user didn't ask for. If you spot something worth fixing, ask first.
+10. ❌ Do NOT revive RentProof or any other archived idea.
 
 ## ✅ DO these things
 
-1. ✅ Be sharp, opinionated, decisive. Lead with the answer, justify after
-2. ✅ Always include a devil's-advocate take
-3. ✅ Use plain English with concrete examples (Rita Sharma, $1,800 deposit, paint deduction)
-4. ✅ Apply the **agentic test**, **two-prompts-away test**, **end-to-end-smoothness test**, and **SmartNourish quality bar** to every decision
-5. ✅ When the user uploads a doc, **read it before doing anything else** — it's almost always context you need
-6. ✅ Update `RENTPROOF_SPEC.md` build-plan checkboxes whenever scope or status changes
-7. ✅ Update `../AVINASH_HACKATHON_BRAIN.md` only when a NEW pattern emerges across hackathons
-8. ✅ Commit often with descriptive messages (we use git as our undo button)
+1. ✅ Be sharp, opinionated, decisive. Lead with the answer, justify after.
+2. ✅ Always include a devil's-advocate take.
+3. ✅ Use plain English with concrete examples (Sarah, Tom's swollen ankles, Helen forgot the year).
+4. ✅ When the user uploads a doc, **read it before doing anything else**.
+5. ✅ Update `BEDSIDE_SPEC.md` build-plan checkboxes as items ship.
+6. ✅ Update `../AVINASH_HACKATHON_BRAIN.md` only when a NEW pattern emerges across hackathons.
+7. ✅ Commit often with descriptive messages (git is our undo button).
 
 ---
 
 ## 🎯 What to do FIRST in a new session
 
-1. Read `RENTPROOF_SPEC.md` end-to-end (5 min) — product truth
-2. Read `PROTOCOL_NOTES.md` (3 min) — so you don't fumble jargon
-3. Skim `ARCHITECTURE.md` § 1, 2, 3, 6, 9 (5 min) — stack, diagram, folders, A2UI contract, build order
-4. Skim `SCREENS.md` storyboard section (2 min) — what we're building toward
-5. Skim `IDEA_GRAVEYARD.md` (2 min) — don't re-suggest dead ideas
-6. Skim `../AVINASH_HACKATHON_BRAIN.md` TL;DR (2 min) — how to talk to Avinash
-7. Run `git log --oneline -10` to see what's already shipped
-8. Open with: *"Caught up. Friday-build-day items remaining are X, Y, Z. Want me to start on the mock landlord-letter PDF + lease PDF generator first so the agent has something to read?"*
+1. Read `BEDSIDE_SPEC.md` end-to-end (5 min)
+2. Skim `IDEA_GRAVEYARD.md` (2 min) — don't re-suggest dead ideas
+3. Skim `../AVINASH_HACKATHON_BRAIN.md` TL;DR (2 min) — how to talk to Avinash
+4. Run `git log --oneline -15` to see what's already shipped
+5. Check `BEDSIDE_SPEC.md` §11 build plan — pick up the next unshipped item
+6. Open with: *"Caught up. Next item in the build plan is X. Starting now."*
 
-That's it. Total ramp: ~20 minutes. Now go read `RENTPROOF_SPEC.md`. 🐶
+That's it. Total ramp: ~15 minutes. Now go read `BEDSIDE_SPEC.md`. 🐶

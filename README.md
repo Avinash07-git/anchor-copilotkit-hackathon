@@ -1,6 +1,6 @@
-# 🏠 RentProof
+# 🛏️ Bedside
 
-> An AI investigator that builds renters a custom evidence room for their security-deposit dispute. **Change a fact → the room rebuilds itself.**
+> **The intelligent layer that was always missing.** Three lenses, one app — the patient's body, the patient's mind, and the caregiver's breaking point. You text it what you noticed. The dashboard rebuilds itself when something needs your attention.
 
 Built for the **Generative UI Hackathon** (A2UI + AG-UI + MCP Apps), Saturday 2026-05-09, San Francisco.
 
@@ -8,15 +8,17 @@ Built for the **Generative UI Hackathon** (A2UI + AG-UI + MCP Apps), Saturday 20
 
 ## What is this?
 
-Your landlord kept your deposit. You upload their deduction letter, your lease, and your photos. RentProof's AI agent investigates each charge against your state's law and renders you a **custom evidence room**: a top-down floor plan of your apartment with each room color-coded by case strength:
+63 million Americans are family caregivers. Most are doing complex care at home with zero training, a WhatsApp group, and a 9-page discharge PDF. Bedside is an AI that sits at the bedside when you can't.
 
-- 🟢 **Likely reasonable** — the deduction looks fair given the lease + photos + rule snippet
-- 🟡 **Needs more proof** — it could go either way; gather the listed evidence
-- 🔴 **Worth challenging** — based on the documents, this one's worth pushing back on
+You text it casual observations — *"Tom's ankles look swollen and he skipped dinner again"* — and it:
+- Remembers everything across days
+- Watches three people through three lenses simultaneously (body / mind / caregiver)
+- Detects patterns across multi-day signals + multi-observer notes that no single human can track alone
+- **Rebuilds the dashboard from scratch when a pattern crosses a threshold**
 
-Click any room → see the actual statute and case-specific reasoning. Type or speak a correction ("actually I lived there 6 months") → the agent re-evaluates and the screen reactively rebuilds itself live. Approve the draft response letter → download a ready-to-mail PDF.
+> **Not a medical device.** Bedside surfaces patterns from what you tell it, so you can share them with your healthcare team. Always consult a qualified clinician for medical decisions.
 
-> **Not legal advice.** RentProof helps renters organize evidence and draft a response letter; it never claims a deduction is "illegal." Confirm with a tenant-rights attorney before filing in court.
+The killer A2UI moment: when all three lenses cross threshold simultaneously, the agent constructs a **CombinedTriageView** — a layout that has never appeared before in this family's app, because this exact combination has never occurred.
 
 ---
 
@@ -26,12 +28,11 @@ Click any room → see the actual statute and case-specific reasoning. Type or s
 |---|---|
 | Backend | FastAPI (Python 3.11+, uv) |
 | Agent | Pydantic AI |
-| LLM | Gemini 2.5 Flash (public Google AI Studio API, free tier) → 2.0 Flash → Gemma fallback |
-| MCP | mcp-use (Python SDK) |
+| LLM | Claude Sonnet (via Walmart Element) |
+| MCP | mcp-use (Python SDK) — 8 tools |
 | AG-UI | CopilotKit React SDK + Pydantic AI adapter |
-| A2UI | Custom 7-component kit (ConfidenceMeter, FloorPlan, BulkPhotoBin, RoomCard, LawCitation, EvidenceChecklist, DemandLetterPreview) + dev-mode UIPlanInspector — mapped to the A2UI starter kit on event day |
+| A2UI | Custom 9-component kit + 4 layouts + dev-mode UIPlanInspector |
 | Frontend | React 18 + Vite + TypeScript + Tailwind 3 (pnpm) |
-| PDF | pdfplumber (read) + ReportLab (write) |
 
 ---
 
@@ -43,7 +44,7 @@ cd backend
 uv venv
 source .venv/bin/activate
 uv pip install -e . --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple --allow-insecure-host pypi.ci.artifacts.walmart.com
-cp .env.example .env  # then fill in GEMINI_API_KEY
+cp .env.example .env  # then fill in API keys
 uv run uvicorn app.main:app --reload --port 8000
 # open http://localhost:8000/health
 ```
@@ -61,14 +62,14 @@ pnpm dev
 ## Project Layout
 
 ```
-rentproof/
-├── backend/        FastAPI + Pydantic AI agent + MCP tools
+bedside/
+├── backend/        FastAPI + Pydantic AI agent + 8 MCP tools
 ├── frontend/       React + Vite + A2UI component kit + AG-UI panel
-├── docs/           Design artifacts (symlinked from ../*.md)
-└── scripts/        Demo data generators (mock landlord letter, lease)
+├── archive/        Earlier directions (RentProof) — reference only
+└── *.md            BEDSIDE_SPEC, START_HERE, IDEA_GRAVEYARD, AVI_RAMPUP
 ```
 
-Full architecture in `../ARCHITECTURE.md`. Wireframes in `../SCREENS.md`. Protocol cheat sheet in `../PROTOCOL_NOTES.md`.
+Full spec in `BEDSIDE_SPEC.md`. Onboarding in `START_HERE.md`.
 
 ---
 
