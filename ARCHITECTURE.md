@@ -20,7 +20,10 @@
 | Frontend | **React 18 + Vite + TypeScript + Tailwind 3** | A2UI components need React; Vite = fast HMR for live demo |
 | PDF parse | **pdfplumber** | Better text extraction than PyPDF2; handles tables |
 | PDF generate | **ReportLab** | Battle-tested; legal-doc templating; deterministic output |
-| Floor plan render | **Custom React + inline SVG + Tailwind classes** | Lightweight, no heavy 3D dep, easy to color rooms reactively |
+| Floor plan render | **Custom React + inline SVG + Tailwind classes** | Lightweight, no heavy 3D dep, easy to color rooms reactively, supports drag-drop targets |
+| Drag-drop | **HTML5 native drag-drop API + react-dropzone** | Zero-dep core; react-dropzone polishes the bulk photo bin |
+| Voice input | **Web Speech API** (`SpeechRecognition`) | Browser-native, free, zero deps, Safari + Chrome support |
+| Vision (photo classification) | **Gemini 2.5 Flash multimodal** | Same LLM as agent; one call per photo to label `{room, phase}` |
 | Storage | In-memory dict for demo session (no DB) | Single-user demo, no persistence needed |
 | Colors | Walmart palette: blue.100 `#0053e2`, spark.100 `#ffc220`, red.100 `#ea1100`, green.100 `#2a8703`, spark.140 `#995213` | Walmart house style + WCAG AA contrast |
 | Package mgr (Py) | **uv** with Walmart Artifactory index | Walmart rule |
@@ -305,7 +308,7 @@ GUARDRAILS
 
 ## 6. 🎨 A2UI Component Kit — full schema
 
-Six components. Each has a stable JSON shape the agent emits and the renderer interprets. **This is the contract.**
+Seven components. Each has a stable JSON shape the agent emits and the renderer interprets. **This is the contract.**
 
 ### `ConfidenceMeter`
 ```typescript
@@ -319,7 +322,7 @@ Six components. Each has a stable JSON shape the agent emits and the renderer in
 }
 ```
 
-### `FloorPlan`
+### `FloorPlan` — NOW INTERACTIVE (drag-drop + click)
 ```typescript
 {
   type: "FloorPlan",
@@ -333,8 +336,36 @@ Six components. Each has a stable JSON shape the agent emits and the renderer in
       x: number, y: number,
       w: number, h: number,
       color: "green" | "yellow" | "red" | "gray",
-      onClick?: "highlight_room"  // event name renderer wires up
-    }>
+      photo_thumbs?: string[],     // URLs of photos dropped on this room
+      annotations?: Array<{        // user click-annotations (P2 stretch)
+        x: number, y: number,
+        text: string                // e.g. "hole in wall"
+      }>,
+      accepts_drop: boolean        // is this room a valid drop target?
+    }>,
+    // Frontend emits these events back to the agent via AG-UI:
+    // - photo_dropped(room_id, file_id)
+    // - room_clicked(room_id, x, y)        // for annotation
+    // - annotation_added(room_id, x, y, text)
+  }
+}
+```
+
+### `BulkPhotoBin` — NEW (P0 friction-killer)
+```typescript
+{
+  type: "BulkPhotoBin",
+  props: {
+    title: string,         // "Drag your photos here — we'll figure out which room"
+    accepts: string[],     // ["image/jpeg", "image/png", "image/heic"]
+    classified: Array<{    // photos already auto-classified
+      file_id: string,
+      thumb_url: string,
+      room_label: string,  // agent's guess
+      phase: "movein" | "moveout" | "unknown",
+      confidence: number   // 0-1
+    }>,
+    pending: Array<{ file_id: string, thumb_url: string }>  // uploading/classifying
   }
 }
 ```
@@ -408,12 +439,76 @@ Six components. Each has a stable JSON shape the agent emits and the renderer in
 
 ---
 
-## 7. 🌐 API Surface (FastAPI routes)
+## 7. 🌊 Friction Minimization — design principles (NEW)
+
+> **Product principle: Rita should never have to think about format, naming, or order.** She speaks or dumps; the product figures it out.
+
+### Voice everywhere it matters
+
+| Surface | What Rita says | What happens |
+|---|---|---|
+| Landing page mic (P1) | *"My landlord in SF kept $1,800 of my $2,500 deposit after a 3-year lease."* | Web Speech API → Gemini extracts `{state, tenancy_months, deposit_amount, withheld_amount, address}` → case pre-fills, skips intake form entirely |
+| AG-UI chat mic (P0) | *"actually I lived there 6 months"* | Same path → sends as `user_correction` event → agent re-runs → evidence room rebuilds |
+
+**Implementation:**
+- `frontend/src/lib/voice.ts` — thin wrapper over `window.SpeechRecognition`/`webkitSpeechRecognition`
+- Mic button shows pulsing red ring while listening (WCAG: not color-only — also has "Listening…" text)
+- Falls back to plain text input on browsers without Web Speech (Firefox)
+
+### Bulk photo dump — zero naming, zero sorting (P0)
+
+Rita drags 20 photos. They have names like `IMG_4729.jpg`, `WhatsApp Image 2026-04-30.jpg`, whatever. The product handles classification:
+
+```
+User drops 20 photos
+     │
+     ▼
+FastAPI saves to /tmp/{session}/bulk/
+     │
+     ▼
+Agent's `classify_photo` MCP tool (NEW) calls Gemini 2.5 Flash multimodal:
+     "Look at this photo. Is it a bedroom, living room, kitchen, bathroom,
+      or hall? Does it look like move-in (clean, empty) or move-out (lived-in,
+      possibly worn)? Return JSON: {room, phase, confidence}"
+     │
+     ▼
+Agent receives 20 classifications, drops thumbs on FloorPlan rooms via
+`photo_thumbs` prop. Confidence < 0.6 → surfaces in BulkPhotoBin's
+`pending` queue with a "which room is this?" mini-card.
+```
+
+**New MCP tool to wire in:**
+```python
+classify_photo(image_path: str) -> {room: str, phase: str, confidence: float}
+```
+
+**Cost:** ~1s per photo, 8 photos ≈ 8s during investigation — acceptable. Runs in parallel via `asyncio.gather()`.
+
+### Auto-detect state from address (P1)
+
+If the address parsed from voice intake or lease contains a US state, skip the state dropdown. Fallback: dropdown stays as override.
+
+### Smart-defaults instead of forms
+
+- No login, no account creation, no email required (P0)
+- No "select your apartment shape" — agent infers room count from photos + lease (P0)
+- Missing data → agent asks via AG-UI chat, not a form modal (P0)
+
+### The "5 second to value" guarantee
+
+From landing to first colored room on the floor plan: **≤5 seconds** when the user clicks "Try with Rita's case" (demo path). Real user path: **≤30 seconds** assuming voice intake + bulk photo drop.
+
+---
+
+## 8. 🌐 API Surface (FastAPI routes)
 
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/session` | Create new investigation session, returns `session_id` |
-| `POST` | `/upload` | Multipart upload of letter, lease, photos |
+| `POST` | `/upload` | Multipart upload of letter, lease, **bulk photos** (any names) |
+| `POST` | `/voice/intake` | Speech transcript → extracted case facts |
+| `POST` | `/canvas/photo_drop` | Photo dropped on floor-plan room → agent re-evaluates that room |
+| `POST` | `/canvas/annotation` | Click annotation on room (P2) |
 | `WS`   | `/agui/{session_id}` | AG-UI event stream (bidirectional) |
 | `POST` | `/correct/{session_id}` | Submit a fact correction (also via WS) |
 | `GET`  | `/letter/{session_id}` | Download generated demand letter PDF |
@@ -421,7 +516,7 @@ Six components. Each has a stable JSON shape the agent emits and the renderer in
 
 ---
 
-## 8. 🧪 Testing & Demo Safety Nets
+## 9. 🧪 Testing & Demo Safety Nets
 
 | Safety net | Status |
 |---|---|
@@ -434,31 +529,42 @@ Six components. Each has a stable JSON shape the agent emits and the renderer in
 
 ---
 
-## 9. 🚀 Build Order (when we eventually code)
+## 10. 🚀 Build Order (when we eventually code)
 
 > **Don't build out of order.** Each step gates the next.
 
-1. **Backend skeleton** — FastAPI + uv venv + .env + health endpoint (10 min)
-2. **MCP tools, mocked first** — each tool returns hardcoded JSON for the demo case (30 min)
+1. **Backend skeleton** — FastAPI + uv venv + .env + health endpoint (10 min) ✅
+2. **MCP tools, mocked first** — each tool returns hardcoded JSON for the demo case (30 min) ✅
 3. **Pydantic AI agent + Gemini wired up + system prompt** — outputs valid UI plan JSON (45 min)
 4. **AG-UI adapter** — WebSocket streaming events as agent runs (30 min)
-5. **Frontend skeleton** — Vite + React + Tailwind + Walmart palette tokens (15 min)
-6. **A2UI renderer + the 6 components** — render hardcoded UI plan first (60 min)
+5. **Frontend skeleton** — Vite + React + Tailwind + Walmart palette tokens (15 min) ✅
+6. **A2UI renderer + the 7 components** — render hardcoded UI plan first (60 min)
 7. **AG-UI panel (CopilotKit) wired to backend WS** — stream visible (30 min)
 8. **End-to-end happy path** — upload → investigate → render evidence room (30 min)
-9. **"Change one fact" flow** — correction WS message → agent re-run → reactive re-render (45 min)
-10. **TX state variant** — second statute file + state switcher (30 min)
-11. **PDF letter generation (ReportLab)** — CA + TX templates (45 min)
-12. **HITL approval modal** — review before letter finalizes (20 min)
-13. **Polish: Walmart palette, animations, copy pass** (60 min)
-14. **Backup video record** (30 min)
-15. **Pitch script + 5 rehearsals** (60 min)
+9. **✨ Bulk photo dump + Gemini vision auto-classification (P0 friction)** (60 min)
+10. **✨ Drag-drop photos onto floor-plan rooms (interactive canvas)** (90 min)
+11. **✨ Voice input on AG-UI chat box (Web Speech API) (P0 friction)** (30 min)
+12. **“Change one fact” flow** — correction WS message (text or voice) → agent re-run → reactive re-render (45 min)
+13. **✨ Voice-driven intake on landing page (P1 friction)** (45 min)
+14. **✨ Auto-detect state from address (P1 friction)** (15 min)
+15. **TX state variant** — second statute file + state switcher (30 min)
+16. **PDF letter generation (ReportLab)** — CA + TX templates (45 min)
+17. **HITL approval modal** — review before letter finalizes (20 min)
+18. **Polish: Walmart palette, animations, copy pass** (60 min)
+19. **Backup video record** (30 min)
+20. **Pitch script + 5 rehearsals** (60 min)
 
-**Total: ~9 hours of focused build.** With Thu evening + Fri full day + Sat 1–5 PM, we have ~16 hours. Comfortable margin if we don't drift.
+**Total: ~12 hours of focused build** (added ~3 hours for friction-killers + interactive canvas).
+
+With Thu evening (4 hrs) + Fri full day (~8 hrs) + Sat 1–5 PM (4 hrs) = ~16 available. Still comfortable.
+
+**P2 stretch goals** (only if green by Sat 3pm):
+- Click-to-annotate damage spots on floor plan rooms (60 min)
+- Email-me-the-letter button (30 min)
 
 ---
 
-## 10. ⚠️ Open Questions — RESOLVED 2026-05-07
+## 11. ⚠️ Open Questions — RESOLVED 2026-05-07
 
 | # | Question | Decision |
 |---|---|---|

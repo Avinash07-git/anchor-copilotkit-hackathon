@@ -34,6 +34,34 @@ Rita clicks the red bedroom — a card pops out: *"$400 paint charge. Illegal un
 
 ---
 
+## 🌊 FRICTION-KILLER PRINCIPLES (added 2026-05-08 after Avinash pushback)
+
+> **Rita should never have to think about format, naming, or order.** She speaks or dumps; the product handles the rest.
+
+| Friction | Killer | Tier |
+|---|---|---|
+| Filling out a form | **Voice intake** — tap mic, speak the situation, agent extracts state/tenancy/deposit/address | P1 |
+| Renaming photos | **Bulk drop + Gemini vision auto-classification** — dump 20 photos with random names, agent labels each by room + phase | P0 |
+| Sorting photos by room | Auto-drops thumbs onto the right floor-plan room | P0 |
+| Picking a state | **Auto-detected from address** (lease or voice transcript); dropdown is override only | P1 |
+| Typing corrections | **Voice correction in chat** — hold mic, speak, agent re-runs | P0 |
+| Logging in | No accounts, no email, no signup. Ever. | P0 |
+
+**The 5-second-to-value guarantee:** From landing to first colored room ≤ 5s on demo path; ≤ 30s on real-user path with voice + bulk drop.
+
+## 💪 WHY THIS ISN'T A CHATBOT (the Gen UI defense)
+
+> *"Couldn't ChatGPT with file upload do this?"* — anticipated judge question. Avinash raised it on 2026-05-07. Answer below.
+
+1. **Spatial input** — dragging a photo onto a specific room is a 2-D gesture. The room's identity carries semantic meaning the agent uses (apply *that* room's statute). Chat is a 1-D text channel; it cannot accept "this photo, on this room" as input.
+2. **Stateful coherence** — "change one fact" updates only the affected components (room color, RoomCard, letter amount). Chat re-types everything; user has to scroll to find what changed.
+3. **Persistent artifact** — the evidence room is something Rita screenshots and shows the landlord. Chat is transient.
+4. **Per-state generative UI** — same case, different layout/components/letter for CA vs TX, decided by the agent at runtime. Chat would dump a wall of text either way.
+
+**The killer demo proof:** drag a stray carpet photo onto the living room. Watch it re-color. Try doing that in a chatbot.
+
+---
+
 ## 🎬 THE 3-MINUTE DEMO ARC (memorize this)
 
 > Full visual storyboard with screens in `SCREENS.md`. Script summary here.
@@ -147,7 +175,7 @@ Agent emits a JSON UI plan; React renderer interprets it. Different case = diffe
 
 ## 📅 BUILD PLAN (2 days remaining: Thu May 8 + Fri May 9 morning + 4hrs Sat)
 
-### Thursday 2026-05-08 — BUILD DAY 1
+### Thursday 2026-05-08 — BUILD DAY 1 (scaffold + design)
 - [x] `PROTOCOL_NOTES.md` — A2UI / AG-UI / MCP plain-English cheat sheet ✅ done 2026-05-07
 - [x] `ARCHITECTURE.md` — system diagram + tech stack + folder structure + agent prompt + A2UI contract ✅ done 2026-05-07
 - [x] `SCREENS.md` — wireframes + storyboard ✅ done 2026-05-07
@@ -162,7 +190,21 @@ Agent emits a JSON UI plan; React renderer interprets it. Different case = diffe
 - [ ] AG-UI WebSocket adapter — streams events as agent runs (next session)
 - [ ] Floor plan SVG component (5 rooms, Tailwind-colored) (next session)
 
-### Friday 2026-05-09 (morning + afternoon) — BUILD DAY 2 + POLISH
+### Friday 2026-05-09 (morning + afternoon) — BUILD DAY 2 + FRICTION + POLISH
+
+Follow `ARCHITECTURE.md` §10 build order, steps 3–18. Highlights:
+- Wire Pydantic AI agent + Gemini + system prompt → first valid UI plan JSON
+- AG-UI WebSocket adapter
+- Render the 7 A2UI components (incl. new `BulkPhotoBin`)
+- **Bulk photo dump + Gemini vision auto-classification** (P0 friction)
+- **Drag-drop photos onto floor-plan rooms** (interactive canvas)
+- **Voice on AG-UI chat** (P0 friction)
+- "Change one fact" reactive re-render
+- **Voice intake on landing** (P1 friction) + **auto-detect state** (P1)
+- TX state variant + state switcher
+- Real PDF demand letter (CA + TX)
+- HITL approval modal
+- Polish + Walmart palette pass + backup video record + 5 pitch rehearsals
 - [ ] Wire MCP tools (PDF reader, legal lookup, demand letter generator)
 - [ ] AG-UI streaming agent reasoning to UI panel
 - [ ] A2UI per-room cards (one per dispute type: paint card, cleaning card, damage card)

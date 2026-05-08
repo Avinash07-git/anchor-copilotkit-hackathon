@@ -134,7 +134,7 @@
 
 ---
 
-## Screen 3 — Evidence Room (the money shot)
+## Screen 3 — Evidence Room (the money shot, now interactive)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -148,22 +148,23 @@
 │  └────────────────────────────────────────────┘ │  ▸ tenancy 3y           ││
 │                                                  │  ▸ paint = illegal      ││
 │  ┌────────────────────────────────────────────┐ │  ▸ carpet = ambiguous   ││
-│  │              FLOOR PLAN                    │ │  ▸ cleaning = fair      ││
+│  │     FLOOR PLAN — drop photos on rooms      │ │  ▸ cleaning = fair      ││
 │  │   ┌────────────────────────────────────┐   │ │  ▸ evidence room ready  ││
 │  │   │                  │                 │   │ │                         ││
 │  │   │   🟡 LIVING      │   🔴 BEDROOM    │   │ │  ─────────────────────  ││
 │  │   │      ROOM        │                 │   │ │                         ││
-│  │   │                  │                 │   │ │  💬 Correct anything?   ││
+│  │   │   [🖼️][🖼️]       │   [🖼️][🖼️]      │   │ │  💬 Talk or type:       ││
 │  │   │   carpet $600    │   paint $400    │   │ │  ┌───────────────────┐  ││
 │  │   │                  │                 │   │ │  │ Type a correction │  ││
 │  │   ├──────────────────┼─────────────────┤   │ │  │ e.g. "lived 6mo"  │  ││
 │  │   │                  │                 │   │ │  └───────────────────┘  ││
-│  │   │   🟢 KITCHEN     │   ⚪ HALL       │   │ │  [    Send    ]         ││
+│  │   │   🟢 KITCHEN     │   ⚪ HALL       │   │ │  [ 🎙️ Hold to talk ]    ││
+│  │   │   [🖼️]            │                 │   │ │  [    Send    ]         ││
 │  │   │   cleaning $250  │                 │   │ │                         ││
 │  │   │                  │                 │   │ │                         ││
 │  │   └──────────────────┴─────────────────┘   │ │                         ││
 │  │                                            │ │                         ││
-│  │   🔴 illegal  🟡 ambiguous  🟢 fair        │ │                         ││
+│  │   🟢 fair  🟡 ambiguous  🔴 illegal  ⚪ unknown │                         ││
 │  └────────────────────────────────────────────┘ │                         ││
 │                                                  │                         ││
 │  ┌────────────────────────────────────────────┐ │                         ││
@@ -183,15 +184,22 @@
 └─────────────────────────────────────────────────────────────────────────────┘
             ↑                                                  ↑
     A2UI-rendered                              AG-UI panel (always visible)
+  (rooms accept photo drops)                  (text + voice input)
 ```
 
 **Component map:**
 - Top-left card = `ConfidenceMeter`
-- Center grid = `FloorPlan` (clickable rooms)
-- Bottom row of cards (one per charged room) = `RoomCard` × 3
-- Below floor plan = `EvidenceChecklist`
-- Bottom = `DemandLetterPreview`
-- Right rail = AG-UI panel (CopilotKit) — agent stream + chat for corrections
+- Center grid = `FloorPlan` **(now drop targets — photos appear as room thumbs)**
+- Below floor plan: one `RoomCard` per charged room
+- Below: `EvidenceChecklist`
+- Bottom: `DemandLetterPreview`
+- Right rail: AG-UI panel (CopilotKit) — agent stream + voice/text correction chat
+
+**Interactions on this screen:**
+1. **Drag a photo from the BulkPhotoBin (or system) onto a room** → agent re-evaluates that room → color updates live, RoomCard updates
+2. **Click a room** → LawCitation slides in (Screen 4)
+3. **Type or hold-to-talk in the chat** → "change one fact" flow (Screen 7)
+4. **Click "Review & approve"** → HITL modal (Screen 5)
 
 ---
 
