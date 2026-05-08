@@ -94,10 +94,12 @@ We are building **Bedside** — *"The intelligent layer that was always missing.
 ## 🎯 What to do FIRST in a new session
 
 1. Read `BEDSIDE_SPEC.md` end-to-end (5 min)
-2. Skim `IDEA_GRAVEYARD.md` (2 min) — don't re-suggest dead ideas
-3. Skim `../AVINASH_HACKATHON_BRAIN.md` TL;DR (2 min) — how to talk to Avinash
-4. Run `git log --oneline -15` to see what's already shipped
-5. Check `BEDSIDE_SPEC.md` §11 build plan — pick up the next unshipped item
-6. Open with: *"Caught up. Next item in the build plan is X. Starting now."*
+2. **Read `SESSION_HANDOFF.md` (3 min)** — why we pivoted + critical context from the last session
+3. Skim `IDEA_GRAVEYARD.md` (2 min) — don't re-suggest dead ideas
+4. Skim `../AVINASH_HACKATHON_BRAIN.md` TL;DR (2 min) — how to talk to Avinash
+5. Run `git log --oneline -10` to see what's already shipped (HEAD = `74bfe53`)
+6. Quick backend sanity: `cd backend && python3 -c "from app.mcp_tools import ALL_TOOLS; print(len(ALL_TOOLS), 'tools')"` should print `8 tools`
+7. Pick up the next unshipped item from `BEDSIDE_SPEC.md` §11 — currently the **Pydantic AI agent + Walmart Element wiring**
+8. Open with: *"Caught up. Picking up at item 1 — Pydantic AI agent + Element wiring. Starting now."*
 
 That's it. Total ramp: ~15 minutes. Now go read `BEDSIDE_SPEC.md`. 🐶
