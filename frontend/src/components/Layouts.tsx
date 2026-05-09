@@ -13,15 +13,33 @@ const Grid = ({ children, cols = 3 }: { children: React.ReactNode; cols?: 1 | 2 
 };
 
 // --- Calm dashboard ------------------------------------------------------
-// 3 DriftScoreCards. Nothing else. No alerts. The agent's resting state.
+// 3 DriftScoreCards. The agent's resting state — quiet, ambient, "all clear".
+//
+// We accent it with a thin breathing band at the top so the screen feels
+// alive (sells the "watching in the background" promise) without alarming.
 
 const CalmDashboard = ({ components }: { components: PlanComponent[] }) => (
   <div className="space-y-6">
-    <div className="text-center py-8">
-      <h2 className="text-2xl font-semibold text-bedside-gray-160">Everyone is calm right now.</h2>
-      <p className="text-bedside-gray-100 mt-2">
-        Bedside is quietly tracking the Reynolds family. Nothing needs your attention.
-      </p>
+    <div className="relative overflow-hidden rounded-3xl border border-anchor-mist-100 bg-white shadow-soft">
+      {/* Breathing band */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-state-green via-anchor-indigo-400 to-state-green opacity-60 animate-pulse" />
+      <div className="flex items-center gap-5 px-7 py-6">
+        <div className="relative w-14 h-14 grid place-items-center">
+          <span className="absolute inset-0 rounded-full bg-state-green/15 animate-ping" />
+          <span className="absolute inset-2 rounded-full bg-state-green/30" />
+          <span className="relative w-3 h-3 rounded-full bg-state-green shadow-glow" />
+        </div>
+        <div className="flex-1">
+          <h2 className="font-display text-xl text-anchor-ink-900">Everyone is calm right now.</h2>
+          <p className="text-sm text-anchor-mist-400 mt-0.5">
+            Anchor is quietly tracking the Reynolds family. Nothing needs your attention.
+          </p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-anchor-mist-400">
+          <span className="px-2 py-1 rounded-full bg-anchor-cream-100">3 lenses active</span>
+          <span className="px-2 py-1 rounded-full bg-anchor-cream-100">0 alerts</span>
+        </div>
+      </div>
     </div>
     <Grid cols={3}>
       {components.map((c, i) => (
@@ -64,7 +82,7 @@ const SingleAlert = ({ components }: { components: PlanComponent[] }) => {
 const DualRisk = ({ slots }: { slots: NonNullable<UIPlan['slots']> }) => (
   <div className="grid gap-6 lg:grid-cols-2">
     <div className="space-y-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-bedside-gray-100">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-anchor-mist-400">
         Patient
       </h3>
       {slots.left_panel.map((c, i) => (
@@ -72,7 +90,7 @@ const DualRisk = ({ slots }: { slots: NonNullable<UIPlan['slots']> }) => (
       ))}
     </div>
     <div className="space-y-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-bedside-gray-100">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-anchor-mist-400">
         Caregiver
       </h3>
       {slots.right_panel.map((c, i) => (
@@ -120,7 +138,7 @@ export function renderLayout(plan: UIPlan) {
       return <DualRisk slots={plan.slots} />;
     default:
       return (
-        <pre className="text-xs font-mono bg-bedside-gray-10 p-3 rounded">
+        <pre className="text-xs font-mono bg-anchor-cream-100 p-3 rounded">
           Unknown layout: {plan.layout}
         </pre>
       );

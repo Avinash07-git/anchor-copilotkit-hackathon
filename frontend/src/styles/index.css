@@ -1,12 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 html, body, #root { height: 100%; }
+
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: #ffffff;
-  color: #1a1a1a;
+  background: #fbf7f0;
+  color: #1f1b2c;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+/* Soft scrollbar that matches the cream surface */
+::-webkit-scrollbar           { width: 10px; height: 10px; }
+::-webkit-scrollbar-track     { background: transparent; }
+::-webkit-scrollbar-thumb     { background: #d4cfc3; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #a39e92; }
+
+/* Section heading rhythm */
+.font-display {
+  font-family: 'Fraunces', 'Inter', serif;
+  font-feature-settings: 'ss01', 'ss02';
+  letter-spacing: -0.02em;
 }

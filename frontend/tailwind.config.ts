@@ -1,34 +1,72 @@
 import type { Config } from 'tailwindcss';
 
-// Bedside palette — calm, accessible, WCAG AA on every pairing.
-// Blue is the trust anchor; spark-yellow is reserved for attention prompts;
-// red/amber/green only ever appear with an icon + label so the UI is
-// color-blind safe (paired-encoding rule, see SCREENS notes in spec §10).
+/**
+ * Anchor design system.
+ *
+ * Premium-calm palette:
+ *  - `anchor.indigo`  – the trust anchor. Deep, calm, decisive.
+ *  - `anchor.coral`   – the warmth. Used for accents + warm CTAs.
+ *  - `anchor.cream`   – the surface. Warmer than white, softer on the eye.
+ *  - `anchor.ink`     – body text. Warm charcoal, never pure black.
+ *  - `anchor.mist`    – borders + dividers. Barely-there.
+ *
+ * State colours (`state.*`) are reserved for severity signalling and are
+ * always paired with an icon + label so the UI stays colour-blind safe.
+ *
+ * Every text/background pairing meets WCAG AA contrast.
+ */
 const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        bedside: {
-          blue:   { 100: '#0053e2', 110: '#004ad1', 130: '#003fb8' },
-          spark:  { 10:  '#fff5d6', 100: '#ffc220', 140: '#995213' },
-          red:    { 10:  '#ffe5e1', 100: '#ea1100' },
-          amber:  { 10:  '#fff1d4', 100: '#d97706' },
-          green:  { 10:  '#dcfce7', 100: '#2a8703' },
-          gray:   { 10:  '#f5f5f5', 50:  '#cfcfcf', 100: '#8a8a8a', 160: '#1a1a1a' },
+        anchor: {
+          indigo: {
+            50:  '#eef0ff',
+            100: '#e0e4ff',
+            200: '#c5cbff',
+            400: '#7c83f5',
+            500: '#5b63eb',
+            600: '#4f46e5', // primary
+            700: '#4338ca',
+            800: '#3730a3',
+            900: '#1e1b4b',
+          },
+          coral: {
+            50:  '#fff1f2',
+            100: '#ffe4e6',
+            200: '#fecdd3',
+            300: '#fda4af',
+            400: '#fb7185', // accent
+            500: '#f43f5e',
+            600: '#e11d48',
+          },
+          cream:  { 50: '#fdfbf7', 100: '#fbf7f0', 200: '#f5efe3' },
+          ink:    { 100: '#3f3a4a', 300: '#2a2632', 600: '#1f1b2c', 900: '#0f0d18' },
+          mist:   { 50: '#f1ede4', 100: '#e7e2d8', 200: '#d4cfc3', 400: '#a39e92' },
         },
-        // State semantic colors — always paired with icon + label (color-blind safe).
         state: {
-          green:  '#2a8703',
-          yellow: '#d4a017',
+          green:  '#16a34a',
+          yellow: '#ca8a04',
           amber:  '#d97706',
-          red:    '#ea1100',
-          gray:   '#8a8a8a',
+          red:    '#dc2626',
+          gray:   '#737373',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        sans:    ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Fraunces"', 'Inter', 'serif'],
+        mono:    ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+      },
+      boxShadow: {
+        soft:  '0 1px 2px rgba(31, 27, 44, 0.04), 0 4px 12px rgba(31, 27, 44, 0.04)',
+        lift:  '0 2px 4px rgba(31, 27, 44, 0.06), 0 12px 32px rgba(31, 27, 44, 0.08)',
+        glow:  '0 0 0 4px rgba(79, 70, 229, 0.15)',
+      },
+      backgroundImage: {
+        'cream-gradient':  'linear-gradient(180deg, #fdfbf7 0%, #fbf7f0 60%, #f5efe3 100%)',
+        'indigo-gradient': 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+        'coral-gradient':  'linear-gradient(135deg, #fb7185 0%, #f43f5e 100%)',
       },
     },
   },

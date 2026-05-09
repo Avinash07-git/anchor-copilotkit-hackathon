@@ -39,7 +39,7 @@ APPROVED_PHRASING = {
 }
 
 DISCLAIMER = (
-    "Bedside is not a medical device. It surfaces patterns from what you tell "
+    "Anchor is not a medical device. It surfaces patterns from what you tell "
     "it, so you can share them with your healthcare team. Always consult a "
     "qualified clinician for medical decisions."
 )

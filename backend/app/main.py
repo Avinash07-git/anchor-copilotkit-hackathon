@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Bedside",
+    title="Anchor",
     description=(
         "The intelligent layer that was always missing. Three lenses, one "
         "app — the patient's body, the patient's mind, and the caregiver's "
@@ -126,13 +126,13 @@ app.add_middleware(
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "service": "bedside", "version": "0.1.0"}
+    return {"status": "ok", "service": "anchor", "version": "0.1.0"}
 
 
 @app.get("/")
 async def root() -> dict:
     return {
-        "message": "Bedside backend is alive. See /docs for the API.",
+        "message": "Anchor backend is alive. See /docs for the API.",
         "family": "Reynolds (Tom 68, Helen 84, Sarah 42)",
         "triggers": [t["id"] for t in TRIGGER_SEQUENCE],
         "current_plan_layout": (_state["plan"] or {}).get("layout"),
@@ -413,7 +413,7 @@ async def approval(decision: ApprovalDecision) -> dict:
 async def copilotkit_runtime_stub(request: Request) -> dict:
     """No-op stub for the CopilotKit provider's runtimeUrl probe.
 
-    We do not run the full CopilotKit GraphQL runtime — Bedside drives its
+    We do not run the full CopilotKit GraphQL runtime — Anchor drives its
     own chat surface against /api/chat. This keeps the <CopilotKit /> React
     provider quiet during dev so the console isn't full of 404s.
     """

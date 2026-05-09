@@ -176,11 +176,11 @@ export interface UIPlan {
 
 export const colorToBadge = (c: Color): string => {
   switch (c) {
-    case 'green':  return 'bg-bedside-green-10 text-bedside-green-100 border-bedside-green-100';
-    case 'yellow': return 'bg-bedside-spark-10 text-bedside-spark-140 border-bedside-spark-140';
-    case 'amber':  return 'bg-bedside-amber-10 text-bedside-amber-100 border-bedside-amber-100';
-    case 'red':    return 'bg-bedside-red-10 text-bedside-red-100 border-bedside-red-100';
-    default:       return 'bg-bedside-gray-10 text-bedside-gray-100 border-bedside-gray-50';
+    case 'green':  return 'bg-green-50 text-state-green border-state-green';
+    case 'yellow': return 'bg-anchor-coral-50 text-anchor-coral-600 border-anchor-coral-600';
+    case 'amber':  return 'bg-anchor-coral-50 text-state-amber border-state-amber';
+    case 'red':    return 'bg-red-50 text-state-red border-state-red';
+    default:       return 'bg-anchor-cream-100 text-anchor-mist-400 border-anchor-mist-100';
   }
 };
 

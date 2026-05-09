@@ -37,7 +37,7 @@ def _load_system_prompt() -> str:
     if _PROMPT_PATH.exists():
         return _PROMPT_PATH.read_text(encoding="utf-8")
     return (
-        "You are Bedside, an AI that emits a UIPlan JSON describing how to "
+        "You are Anchor, an AI that emits a UIPlan JSON describing how to "
         "render a caregiver dashboard. See the UIPlan model in ui_plan.py."
     )
 
