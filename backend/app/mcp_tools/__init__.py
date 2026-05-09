@@ -8,7 +8,7 @@ Eight tools, grouped by concern:
 
 All tools are real implementations (no fakes). Some tools call mocked data
 sources (e.g. find_local_support reads from `app.data.demo_dataset`) — that
-is fine and disclosed as such in BEDSIDE_SPEC.md §11.
+is fine and disclosed as such in ANCHOR_SPEC.md §11.
 
 Every tool obeys safer-language rules. No tool returns clinical claims.
 """

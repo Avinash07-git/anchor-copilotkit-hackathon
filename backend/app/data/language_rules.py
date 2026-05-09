@@ -1,7 +1,7 @@
 """Safer-language constants + instrument citations — non-negotiable.
 
 Bedside is NOT a medical device. Every user-facing string passes through this
-filter. See BEDSIDE_SPEC.md §10. If you find yourself reaching for a clinical
+filter. See ANCHOR_SPEC.md §10. If you find yourself reaching for a clinical
 verb, look here for the replacement.
 
 We also expose **citations** for the three peer-reviewed instruments that drive

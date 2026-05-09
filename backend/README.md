@@ -1,7 +1,7 @@
 # bedside-backend
 
 FastAPI + Pydantic AI backend for **Bedside** — see the top-level
-`/README.md` and `BEDSIDE_SPEC.md` for the full project description.
+`/README.md` and `ANCHOR_SPEC.md` for the full project description.
 
 Local quick start:
 

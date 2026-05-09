@@ -10,7 +10,7 @@ The demo "today" reference for each person:
   - Helen: day 6  (Saturday of the current week; baseline runs weeks 1-4 prior)
   - Sarah: day 14 (end of a 14-day rolling burden window)
 
-See BEDSIDE_SPEC.md §6.5 for the three peer-reviewed instruments behind the
+See ANCHOR_SPEC.md §6.5 for the three peer-reviewed instruments behind the
 scoring math.
 """
 from __future__ import annotations

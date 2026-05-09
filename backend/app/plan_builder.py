@@ -10,7 +10,7 @@ two reasons:
    emit a UIPlan with the same shape and the same citations; we use this
    builder's output as a reference plan in tests.
 
-Layout selection rules (mirror BEDSIDE_SPEC §7):
+Layout selection rules (mirror ANCHOR_SPEC §7):
 
 - 0 patterns matched  → ``calm_dashboard``
 - 1 pattern matched   → ``single_alert``

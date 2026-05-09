@@ -1,6 +1,6 @@
-# Bedside — Session Handoff
+# Anchor — Session Handoff
 
-> Single source of truth for resuming work. **Read this first.** Then `BEDSIDE_SPEC.md` for the full product spec, then `SUBMISSION.md` for the hackathon packet.
+> Single source of truth for resuming work. **Read this first.** Then `ANCHOR_SPEC.md` for the full product spec, then `SUBMISSION.md` for the hackathon packet.
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### What landed in the CopilotKit pass (May 8 evening)
 - `<CopilotKit>` provider wraps the React tree (`frontend/src/main.tsx`)
-- `BedsideChat` panel — natural-language entry, posts to `/api/chat` (`frontend/src/components/BedsideChat.tsx`)
+- `AnchorChat` panel — natural-language entry, posts to `/api/chat` (`frontend/src/components/AnchorChat.tsx`)
 - `POST /api/chat` — parses free text → infers target person → logs observation → recomputes plan → broadcasts via SSE
 - `POST /api/approval` + interactive `ApprovalPrompt` — implements the CopilotKit `renderAndWait` HITL pattern natively (no Node runtime needed on demo day)
 - `POST /api/copilotkit` — no-op stub so the provider initialises cleanly
@@ -45,7 +45,7 @@ We are **not** waiting on a build. We are waiting on:
 | AG-UI hook | SSE subscription, plan + agent-step state | `frontend/src/hooks/useAGUIStream.ts` |
 | App shell | Header, demo trigger bar, agent reasoning panel | `frontend/src/App.tsx` |
 
-**Smoke test:** `BEDSIDE_FORCE_DETERMINISTIC=1 pytest`-equivalent inline test passes — every endpoint returns 200, every UIPlan validates against the Pydantic schema.
+**Smoke test:** `ANCHOR_FORCE_DETERMINISTIC=1 pytest`-equivalent inline test passes — every endpoint returns 200, every UIPlan validates against the Pydantic schema.
 
 ## 🚧 What's NOT done (small list)
 
@@ -78,7 +78,7 @@ Visit <http://localhost:5173>. Click the trigger buttons in the header.
 
 ```bash
 cd backend
-BEDSIDE_FORCE_DETERMINISTIC=1 python3 -c "
+ANCHOR_FORCE_DETERMINISTIC=1 python3 -c "
 from fastapi.testclient import TestClient
 from app.main import app
 from app.ui_plan import UIPlan
@@ -101,7 +101,7 @@ The user fires a demo trigger (HTTP POST `/demo/uc1`). The FastAPI handler appen
 
 ## 🎨 Design system
 
-Bedside palette in `frontend/tailwind.config.ts`. WCAG AA contrast on every text/background pairing. State colors (green/yellow/amber/red) are always paired with an icon + label so the UI is color-blind safe.
+Anchor palette in `frontend/tailwind.config.ts`. WCAG AA contrast on every text/background pairing. State colors (green/yellow/amber/red) are always paired with an icon + label so the UI is color-blind safe.
 
 ## 📂 Repository layout
 
@@ -131,7 +131,7 @@ frontend/
     hooks/
       useAGUIStream.ts    # SSE subscription
     types/uiPlan.ts       # TS mirror of Pydantic models
-BEDSIDE_SPEC.md           # Full product spec — read first
+ANCHOR_SPEC.md           # Full product spec — read first
 SUBMISSION.md             # Hackathon submission packet
 README.md                 # Public-facing project README
 SESSION_HANDOFF.md        # This file
@@ -140,7 +140,7 @@ SESSION_HANDOFF.md        # This file
 ## 🚨 Do NOT do these things
 
 1. ❌ Do NOT add Walmart Element. This is a public hackathon project. Use Gemini free tier or sponsor credits (Anthropic / OpenAI / Google) distributed at check-in.
-2. ❌ Do NOT add new components without a use-case in `BEDSIDE_SPEC.md`. Ten is enough.
+2. ❌ Do NOT add new components without a use-case in `ANCHOR_SPEC.md`. Ten is enough.
 3. ❌ Do NOT change the safer-language disclaimer or the citation strings — they're load-bearing for credibility.
 4. ❌ Do NOT delete `plan_builder.py`. It's the demo safety net when Gemini is rate-limited or offline.
 5. ❌ Do NOT make the agent invent observations. It can only render evidence that's actually in the store.
@@ -151,12 +151,12 @@ SESSION_HANDOFF.md        # This file
 2. ✅ Keep every component file under 600 lines.
 3. ✅ Run the inline smoke test before any commit.
 4. ✅ Commit small + often.
-5. ✅ When in doubt, refer to `BEDSIDE_SPEC.md` — it's the single source of truth.
+5. ✅ When in doubt, refer to `ANCHOR_SPEC.md` — it's the single source of truth.
 
 ## ▶️ What to do FIRST in a new session
 
 1. Read this file.
-2. Skim `BEDSIDE_SPEC.md` (the full spec).
+2. Skim `ANCHOR_SPEC.md` (the full spec).
 3. Skim `SUBMISSION.md` (the hackathon packet).
 4. Run the inline smoke test (above).
 5. Open with: *"Caught up. Ready to proceed — what's the goal for this session?"*

@@ -1,7 +1,7 @@
 """UI Plan models — the contract between the Bedside agent and the React renderer.
 
 The agent emits a UIPlan (JSON); the frontend interprets it and mounts the
-right A2UI components inside the chosen layout. See BEDSIDE_SPEC.md §6 + §7.
+right A2UI components inside the chosen layout. See ANCHOR_SPEC.md §6 + §7.
 
 Every user-facing string in here must obey the safer-language rules in
 `app.data.language_rules`. No clinical claims, no prescriptive language.

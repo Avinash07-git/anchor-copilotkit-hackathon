@@ -263,7 +263,7 @@ async def demo_trigger(trigger_id: str) -> dict:
 # These two endpoints are what the CopilotKit-styled chat panel + the
 # interactive ApprovalPrompt call into. The scripted /demo/* triggers above
 # remain the offline-safe fallback path; this is the natural-language path
-# the pitch script in BEDSIDE_SPEC.md actually demonstrates.
+# the pitch script in ANCHOR_SPEC.md actually demonstrates.
 
 
 class ChatMessage(BaseModel):

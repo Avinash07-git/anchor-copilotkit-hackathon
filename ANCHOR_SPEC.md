@@ -1,4 +1,4 @@
-# 🛏️ Bedside — Product Spec
+# 🛏️ Anchor — Product Spec
 
 > **The intelligent layer that was always missing.**
 > Three lenses, one app. The body, the mind, the caregiver.
@@ -12,10 +12,10 @@
 ## 1. The Pitch
 
 ### One sentence
-**Bedside watches three things no human can track at once — the patient's body, the patient's mind, and the caregiver's breaking point — and rebuilds the dashboard the moment any of them needs attention.**
+**Anchor watches three things no human can track at once — the patient's body, the patient's mind, and the caregiver's breaking point — and rebuilds the dashboard the moment any of them needs attention.**
 
 ### 30-second pitch
-> "63 million Americans are family caregivers. Most are doing complex medical care at home with zero training, a WhatsApp group, and a 9-page discharge PDF. Bedside is an AI that sits at the bedside when you can't. You just text it what you noticed. It remembers everything, connects dots across days no human can track alone, and the dashboard rebuilds itself when something needs your attention. Not a template. A living interface that changes as your reality changes."
+> "63 million Americans are family caregivers. Most are doing complex medical care at home with zero training, a WhatsApp group, and a 9-page discharge PDF. Anchor is an AI that sits at the anchor when you can't. You just text it what you noticed. It remembers everything, connects dots across days no human can track alone, and the dashboard rebuilds itself when something needs your attention. Not a template. A living interface that changes as your reality changes."
 
 ### 90-second pitch
 The 30s pitch +
@@ -62,7 +62,7 @@ Same input method (chat). Same engine. Three lenses the agent watches simultaneo
 | 10 | "He forgot to take the evening blood thinner" |
 | 11 | "Legs look a little swollen to me" |
 
-**What Bedside sees:** appetite ↓ (3×) + leg heaviness (2×) + missed anticoagulant (1×) + visible swelling (1×) → a pattern combination commonly associated with cardiac decompensation in post-discharge patients. Worth raising with the cardiologist promptly.
+**What Anchor sees:** appetite ↓ (3×) + leg heaviness (2×) + missed anticoagulant (1×) + visible swelling (1×) → a pattern combination commonly associated with cardiac decompensation in post-discharge patients. Worth raising with the cardiologist promptly.
 
 **The dashboard moment:**
 Calm green dashboard → Tom's score moves green→yellow→amber → **PatternAlertCard** appears with the 5 signals, the dates, why this combination is worth flagging, a pre-written list of talking points for the next doctor visit, and the cardiologist's earliest open slot.
@@ -71,7 +71,7 @@ Calm green dashboard → Tom's score moves green→yellow→amber → **PatternA
 
 ### 🟪 Use Case 2 — The Silent Decline (Helen's mind)
 
-**Premise:** No single observer sees enough to be alarmed. Bedside synthesizes across observers and detects acceleration vs baseline.
+**Premise:** No single observer sees enough to be alarmed. Anchor synthesizes across observers and detects acceleration vs baseline.
 
 **Four observers, one week:**
 | Observer | Day | Note |
@@ -81,7 +81,7 @@ Calm green dashboard → Tom's score moves green→yellow→amber → **PatternA
 | Emma (granddaughter visits Fri) | Fri | "She couldn't remember what year it was" |
 | Mrs. Chen (neighbour) | Sat | "Helen left the stove on twice this week" |
 
-**What Bedside sees:** 4 observations, 4 different observers, all in 7 days. Compared to baseline (1-2 observations/month for 3 prior months) = **3× acceleration in observation rate**.
+**What Anchor sees:** 4 observations, 4 different observers, all in 7 days. Compared to baseline (1-2 observations/month for 3 prior months) = **3× acceleration in observation rate**.
 
 **The dashboard moment:**
 Helen's state jumps to **RED** under the NPI drift-rate rule (this week's observation activity is ~9× her 4-week baseline — well past the >50% "rapid acceleration" tier). **CognitiveAccelerationCard** appears with a **ContributorMap** — a small visual showing who observed what, when, from where. Cards offer: what to document for the neurologist, a home-safety checklist (stove safety especially), when to consider a care-level reassessment.
@@ -90,7 +90,7 @@ Helen's state jumps to **RED** under the NPI drift-rate rule (this week's observ
 
 ### 🟥 Use Case 3 — The Breaking Point (Sarah's burnout)
 
-**Premise:** Sarah thinks she's just venting in a private notes section. Bedside reads between the lines across 14 days and detects the burnout trajectory the rest of the family can't see.
+**Premise:** Sarah thinks she's just venting in a private notes section. Anchor reads between the lines across 14 days and detects the burnout trajectory the rest of the family can't see.
 
 **What Sarah types — privately, just venting:**
 | Day | Sarah's text |
@@ -101,12 +101,12 @@ Helen's state jumps to **RED** under the NPI drift-rate rule (this week's observ
 | 12 | "I feel like I'm drowning and nobody is helping" |
 | 14 | "I don't know how much longer I can do this" |
 
-**What Bedside sees:** sleep disruption + emotional exhaustion + self-neglect + isolation + loss of hope. Individually = venting. Together = **caregiver-burnout trajectory** crossing the wellbeing threshold.
+**What Anchor sees:** sleep disruption + emotional exhaustion + self-neglect + isolation + loss of hope. Individually = venting. Together = **caregiver-burnout trajectory** crossing the wellbeing threshold.
 
 **The dashboard moment:**
 Dashboard splits into **DualRiskView** for the first time ever in Sarah's app. Left: Tom's body score. Right: **Sarah's wellbeing score** — surfaced for the first time. **BurnoutCard** appears with: respite-care options nearby, a pre-drafted message to Sarah's brother asking for weekend backup, a local caregiver support group, a 5-min self-care check-in.
 
-> 43% of caregivers report sleep difficulties. 36% report depression. **Bedside is the only product watching the caregiver, not just the patient.**
+> 43% of caregivers report sleep difficulties. 36% report depression. **Anchor is the only product watching the caregiver, not just the patient.**
 
 ---
 
@@ -131,13 +131,13 @@ The agent constructs a **CombinedTriageView** — a layout that has never appear
 
 | Time | What happens | Protocol proof |
 |---|---|---|
-| **0:00–0:15** | **Hook.** "63M Americans are caregivers. Most are doing it with a WhatsApp group and a prayer. Bedside is the intelligent layer that was always missing." | — |
+| **0:00–0:15** | **Hook.** "63M Americans are caregivers. Most are doing it with a WhatsApp group and a prayer. Anchor is the intelligent layer that was always missing." | — |
 | **0:15–0:35** | **Calm baseline.** Show the 3-card dashboard: Tom green, Helen amber, Sarah green. Drift scores live. "Three people, three lenses, one app." | A2UI baseline render |
 | **0:35–1:00** | **UC1 — Slow Slide.** Sarah types: *"Tom's ankles are really swollen and he barely ate anything — he just doesn't seem himself."* AG-UI stream visible. Tom's state green→amber under the HF Symptom Monitoring Framework. **PatternAlertCard** materialises with the high-risk combo (edema + missed med, both ≥ moderate) cited verbatim. | A2UI: card composed from these specific signals + framework citation |
-| **1:00–1:25** | **UC2 — Silent Decline.** Four observers' notes hit the system within 24 hours — Tom (Sun), Sarah (Wed), Emma (Fri), Mrs. Chen (Sat). Agent runs the NPI multi-observer aggregation: weekly score 10/96 vs 4-week baseline of 1/96 → ~9× drift → RED "rapid acceleration" tier. **ContributorMap** appears. "No single person saw this. Bedside did." | A2UI: contributor map unique to this family this week |
+| **1:00–1:25** | **UC2 — Silent Decline.** Four observers' notes hit the system within 24 hours — Tom (Sun), Sarah (Wed), Emma (Fri), Mrs. Chen (Sat). Agent runs the NPI multi-observer aggregation: weekly score 10/96 vs 4-week baseline of 1/96 → ~9× drift → RED "rapid acceleration" tier. **ContributorMap** appears. "No single person saw this. Anchor did." | A2UI: contributor map unique to this family this week |
 | **1:25–1:50** | **UC3 — Breaking Point.** Sarah types: *"I really don't know how much longer I can do this."* Agent reads the day-14 phrase as ZBI Z10 hopelessness at severity 3 — the validated single-signal override fires AMBER even though her overall score is just 3/100. Dashboard splits into **DualRiskView** for the first time. **BurnoutCard** with respite options + drafted message to her brother. **"The average says she's fine. The validated override says watch carefully."** | AG-UI: HITL approval to send the brother message |
 | **1:50–2:15** | **THE COMBINED MOMENT.** All three scores red/amber simultaneously. Agent constructs **CombinedTriageView** — priority-ordered. Show the **A2UI Plan Inspector** panel: the JSON the agent emitted, the component tree, plan_version incrementing. "This dashboard has never existed before. The agent had to build it." | A2UI: pure compose-from-scratch |
-| **2:15–2:30** | **Close.** "Three people. One app. You text it. It watches everything. And when something needs your attention — it builds exactly the right dashboard for that moment. Bedside." | — |
+| **2:15–2:30** | **Close.** "Three people. One app. You text it. It watches everything. And when something needs your attention — it builds exactly the right dashboard for that moment. Anchor." | — |
 
 ---
 
@@ -251,7 +251,7 @@ This is what protects us from the medical-liability concern. Every user-facing s
 | "You should..." (medical action) | "You might want to mention this to..." |
 
 **Mandatory disclaimer** on every alert card and at app-load:
-> *"Bedside is not a medical device. It surfaces patterns from what you tell it, so you can share them with your healthcare team. Always consult a qualified clinician for medical decisions."*
+> *"Anchor is not a medical device. It surfaces patterns from what you tell it, so you can share them with your healthcare team. Always consult a qualified clinician for medical decisions."*
 
 ---
 
@@ -279,7 +279,7 @@ This is what protects us from the medical-liability concern. Every user-facing s
 | 7 | React renderer for 10 components + 4 layout wrappers | 2.5h |
 | 8 | AG-UI streaming wired (CopilotKit adapter) — judges see live thinking | 1h |
 | 9 | UIPlanInspector debug panel (collapsible JSON viewer) | 30m |
-| 10 | Polish pass: bedside palette + WCAG AA contrast on every component | 1h |
+| 10 | Polish pass: anchor palette + WCAG AA contrast on every component | 1h |
 | 11 | Pitch script + 5 dry runs + record backup video | 1h |
 | | **🚨 GO/NO-GO checkpoint by Sat 1pm: end-to-end demo runs cleanly 3× in a row** | |
 
@@ -299,13 +299,13 @@ This is what protects us from the medical-liability concern. Every user-facing s
 | Agent emits invalid UIPlan JSON live | Pydantic validation + retry-with-fix loop in agent. Pre-cached known-good plans as fallback. |
 | Stage demo crashes | Backup video recorded by Saturday 2pm, ready to play if anything breaks |
 | Judge says "couldn't a chatbot do this?" | Honest answer: chatbot can't carry 14 days of state, can't watch 4 observers across a week, can't restructure a dashboard. **Memory + multi-source synthesis + dashboard composition** = the moat. |
-| Crowded space (Honor, CareLinx, Papa) | Honest answer: those watch the patient. **Bedside is the only one watching the caregiver too.** Different wedge. |
+| Crowded space (Honor, CareLinx, Papa) | Honest answer: those watch the patient. **Anchor is the only one watching the caregiver too.** Different wedge. |
 
 ---
 
 ## 13. The Pitch Frame to Memorize
 
-> "You could text a chatbot what you noticed today. It would forget by tomorrow. Bedside remembers everything across days, watches three people through three lenses simultaneously, and when something needs your attention — it doesn't ping you with a notification. It rebuilds your entire dashboard around what matters right now. Same agent, same family, different day, completely different screen — composed not templated. That's what generative UI is for."
+> "You could text a chatbot what you noticed today. It would forget by tomorrow. Anchor remembers everything across days, watches three people through three lenses simultaneously, and when something needs your attention — it doesn't ping you with a notification. It rebuilds your entire dashboard around what matters right now. Same agent, same family, different day, completely different screen — composed not templated. That's what generative UI is for."
 
 ---
 

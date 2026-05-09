@@ -11,7 +11,7 @@ observation log state. We support **two modes** so the demo never wobbles:
    - We validate the response against the ``UIPlan`` Pydantic model
    - On any failure (rate-limit, bad JSON, validation error), we fall back
 
-2. **Deterministic mode** (fallback OR forced via ``BEDSIDE_FORCE_DETERMINISTIC=1``):
+2. **Deterministic mode** (fallback OR forced via ``ANCHOR_FORCE_DETERMINISTIC=1``):
    - Just calls ``plan_builder.build_plan`` directly
    - Always returns a correct, citation-rich plan
    - Used in tests and as the demo safety net
@@ -43,7 +43,7 @@ def _load_system_prompt() -> str:
 
 
 def _force_deterministic() -> bool:
-    return os.getenv("BEDSIDE_FORCE_DETERMINISTIC", "").lower() in ("1", "true", "yes")
+    return os.getenv("ANCHOR_FORCE_DETERMINISTIC", "").lower() in ("1", "true", "yes")
 
 
 def _have_gemini_key() -> bool:

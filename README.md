@@ -1,9 +1,9 @@
-# 🛏️ Bedside
+# 🛏️ Anchor
 
 > The intelligent layer that was always missing.
 > Three lenses, one app — the patient's body, the patient's mind, and the caregiver's breaking point.
 
-Bedside is a **generative-UI** application built for the *Generative UI Global Hackathon* (May 9, 2026 — San Francisco). The agent reads casual observations from family caregivers, runs three peer-reviewed clinical instruments under the hood, and **rebuilds the dashboard in real time** when something needs attention. There is no static layout. Every render is composed by the agent for the moment it's in.
+Anchor is a **generative-UI** application built for the *Generative UI Global Hackathon* (May 9, 2026 — San Francisco). The agent reads casual observations from family caregivers, runs three peer-reviewed clinical instruments under the hood, and **rebuilds the dashboard in real time** when something needs attention. There is no static layout. Every render is composed by the agent for the moment it's in.
 
 ## Why this is generative UI (not a chatbot)
 
@@ -96,13 +96,13 @@ frontend/
     components/           # 10 A2UI components
     layouts/              # 4 layouts the agent picks from
     types/uiPlan.ts       # TS mirror of the Pydantic models
-BEDSIDE_SPEC.md           # Single source of truth (read this first)
+ANCHOR_SPEC.md           # Single source of truth (read this first)
 SUBMISSION.md             # Hackathon submission packet
 ```
 
 ## Safer-language commitment
 
-Bedside is **not** a medical device. It surfaces patterns from observations its users record, with citations to the published instruments it uses, so users can have better conversations with their healthcare team. The agent prompt enforces a strict no-clinical-claim banned-phrase list (see `backend/app/data/language_rules.py`) and every alert card carries a verbatim disclaimer.
+Anchor is **not** a medical device. It surfaces patterns from observations its users record, with citations to the published instruments it uses, so users can have better conversations with their healthcare team. The agent prompt enforces a strict no-clinical-claim banned-phrase list (see `backend/app/data/language_rules.py`) and every alert card carries a verbatim disclaimer.
 
 ## License
 
