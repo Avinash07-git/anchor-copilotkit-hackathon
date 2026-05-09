@@ -1,7 +1,7 @@
 [project]
-name = "bedside-backend"
+name = "anchor-backend"
 version = "0.1.0"
-description = "Bedside — the intelligent layer that was always missing. Three lenses, one app."
+description = "Anchor — the intelligent layer that was always missing. Three lenses, one app."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
