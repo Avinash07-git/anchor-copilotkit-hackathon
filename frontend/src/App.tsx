@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAGUIStream } from './hooks/useAGUIStream';
 import { renderLayout } from './components/Layouts';
-import AnchorChat from './components/BedsideChat';
+import AnchorChat from './components/AnchorChat';
 
 /**
  * Anchor — App shell.
