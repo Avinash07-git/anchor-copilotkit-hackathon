@@ -176,21 +176,21 @@ export interface UIPlan {
 
 export const colorToBadge = (c: Color): string => {
   switch (c) {
-    case 'green':  return 'bg-green-50 text-state-green border-state-green';
-    case 'yellow': return 'bg-anchor-coral-50 text-anchor-coral-600 border-anchor-coral-600';
-    case 'amber':  return 'bg-anchor-coral-50 text-state-amber border-state-amber';
-    case 'red':    return 'bg-red-50 text-state-red border-state-red';
+    case 'green':  return 'bg-state-green-soft text-state-green border-state-green/40';
+    case 'yellow': return 'bg-state-yellow-soft text-state-yellow border-state-yellow/40';
+    case 'amber':  return 'bg-state-amber-soft text-state-amber border-state-amber/40';
+    case 'red':    return 'bg-state-red-soft text-state-red border-state-red/40';
     default:       return 'bg-anchor-cream-100 text-anchor-mist-400 border-anchor-mist-100';
   }
 };
 
 export const colorIcon = (c: Color): string => {
   switch (c) {
-    case 'green':  return '🟢';
-    case 'yellow': return '🟡';
-    case 'amber':  return '🟠';
-    case 'red':    return '🔴';
-    default:       return '⚪';
+    case 'green':  return '●';
+    case 'yellow': return '●';
+    case 'amber':  return '●';
+    case 'red':    return '●';
+    default:       return '○';
   }
 };
 

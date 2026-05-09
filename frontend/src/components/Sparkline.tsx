@@ -1,8 +1,9 @@
 /**
  * Sparkline — tiny inline trend chart used inside DriftScoreCard.
  *
- * Pure SVG, no charting lib. Width is responsive (parent dictates), height
- * is fixed. Renders an area fill + smooth line + a final-point dot.
+ * Pure SVG, no charting lib. Renders an area fill + smooth line + an
+ * emphasised "today" endpoint dot. A faint dashed midline acts as a
+ * gentle reference axis without competing visually with the curve.
  */
 
 interface SparklineProps {
@@ -13,36 +14,40 @@ interface SparklineProps {
   ariaLabel?: string;
 }
 
-export function Sparkline({ data, stroke, fill, height = 40, ariaLabel }: SparklineProps) {
+export function Sparkline({ data, stroke, fill, height = 56, ariaLabel }: SparklineProps) {
   if (!data || data.length < 2) return null;
 
-  // Use a fixed virtual width — SVG's preserveAspectRatio scales it for us.
-  const W = 100;
+  const W = 200;
   const H = height;
-  const PAD = 2;
+  const PAD_X = 3;
+  const PAD_Y = 6;
 
-  const min = Math.min(...data) - 1;
-  const max = Math.max(...data) + 1;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
   const range = Math.max(1, max - min);
 
   const points = data.map((v, i) => {
-    const x = PAD + (i / (data.length - 1)) * (W - PAD * 2);
-    const y = H - PAD - ((v - min) / range) * (H - PAD * 2);
+    const x = PAD_X + (i / (data.length - 1)) * (W - PAD_X * 2);
+    const y = PAD_Y + (1 - (v - min) / range) * (H - PAD_Y * 2);
     return [x, y] as const;
   });
 
-  // Smooth the path with simple cardinal-ish bezier between points.
+  // Smooth path: midpoint quadratic so the curve glides instead of zigzagging.
   const linePath = points
     .map(([x, y], i) => {
-      if (i === 0) return `M${x},${y}`;
+      if (i === 0) return `M${x.toFixed(2)},${y.toFixed(2)}`;
       const [px, py] = points[i - 1]!;
       const cx = (px + x) / 2;
-      return `Q${px},${py} ${cx},${(py + y) / 2} T${x},${y}`;
+      const cy = (py + y) / 2;
+      return `Q${px.toFixed(2)},${py.toFixed(2)} ${cx.toFixed(2)},${cy.toFixed(2)} T${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(' ');
 
-  const areaPath = `${linePath} L${points[points.length - 1]![0]},${H} L${points[0]![0]},${H} Z`;
+  const areaPath = `${linePath} L${points[points.length - 1]![0].toFixed(2)},${H} L${points[0]![0].toFixed(2)},${H} Z`;
   const last = points[points.length - 1]!;
+  const midY = PAD_Y + (H - PAD_Y * 2) / 2;
+
+  const gradientId = `spark-grad-${Math.random().toString(36).slice(2, 8)}`;
 
   return (
     <svg
@@ -53,9 +58,37 @@ export function Sparkline({ data, stroke, fill, height = 40, ariaLabel }: Sparkl
       role="img"
       aria-label={ariaLabel ?? 'Wellbeing trend'}
     >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"  stopColor={stroke} stopOpacity="0.18" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {/* Faint reference midline */}
+      <line
+        x1={PAD_X} x2={W - PAD_X} y1={midY} y2={midY}
+        stroke="currentColor" strokeOpacity="0.08" strokeDasharray="2 3" strokeWidth="0.5"
+      />
+
+      {/* Area fill: solid base + subtle gradient on top for depth */}
       <path d={areaPath} fill={fill} />
-      <path d={linePath} fill="none" stroke={stroke} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r={2.4} fill={stroke} />
+      <path d={areaPath} fill={`url(#${gradientId})`} />
+
+      {/* The line itself */}
+      <path
+        d={linePath}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Today endpoint — outer halo + inner dot */}
+      <circle cx={last[0]} cy={last[1]} r={5} fill={stroke} fillOpacity={0.18} />
+      <circle cx={last[0]} cy={last[1]} r={2.6} fill={stroke} />
+      <circle cx={last[0]} cy={last[1]} r={1.1} fill="white" />
     </svg>
   );
 }

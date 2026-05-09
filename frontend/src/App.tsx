@@ -7,21 +7,27 @@ import AnchorChat from './components/AnchorChat';
  * Anchor — App shell.
  *
  * Single-page dashboard that subscribes to the agent's UIPlan stream over
- * SSE and re-renders whenever a new plan arrives. The chat panel on the
- * right is the natural-language entry point. The scripted trigger pills
- * up top are the offline-safe demo path.
+ * SSE and re-renders whenever a new plan arrives. The trigger pills are
+ * the offline-safe hero CTA; the chat panel is the natural-language path.
+ *
+ * Pass ?dev=1 in the URL to surface the layout/version pills (off by default
+ * so end users don't see plumbing).
  */
-const TRIGGERS: Array<{ id: string; label: string; tone: 'safe' | 'warn' | 'reset' }> = [
-  { id: 'reset', label: '↻ Reset',                   tone: 'reset' },
-  { id: 'uc1',   label: '① Tom · slow slide',        tone: 'warn' },
-  { id: 'uc2',   label: '② Helen · silent decline',  tone: 'warn' },
-  { id: 'uc3',   label: '③ Sarah · breaking point',  tone: 'warn' },
+const TRIGGERS: Array<{ id: string; label: string; sub: string; tone: 'safe' | 'warn' | 'reset' }> = [
+  { id: 'reset', label: 'Reset',                sub: 'Calm baseline',         tone: 'reset' },
+  { id: 'uc1',   label: 'Tom · slow slide',     sub: 'Body · HF pattern',     tone: 'warn' },
+  { id: 'uc2',   label: 'Helen · silent decline', sub: 'Mind · NPI drift',    tone: 'warn' },
+  { id: 'uc3',   label: 'Sarah · breaking point', sub: 'Caregiver · ZBI override', tone: 'warn' },
 ];
+
+const isDev = () =>
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dev') === '1';
 
 export default function App() {
   const { plan, steps, connected } = useAGUIStream();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTrigger, setActiveTrigger] = useState<string | null>(null);
 
   // First fetch in case SSE plan_updated hasn't arrived yet (cold load)
   const [bootPlan, setBootPlan] = useState<typeof plan>(null);
@@ -34,10 +40,12 @@ export default function App() {
   }, [plan, bootPlan]);
 
   const livePlan = plan ?? bootPlan;
+  const dev = isDev();
 
   const fireTrigger = async (triggerId: string) => {
     setBusy(true);
     setError(null);
+    setActiveTrigger(triggerId);
     try {
       const path = triggerId === 'reset' ? '/demo/reset' : `/demo/${triggerId}`;
       const res = await fetch(path, { method: 'POST' });
@@ -52,77 +60,87 @@ export default function App() {
 
   return (
     <main className="min-h-screen bg-cream-gradient text-anchor-ink-600">
-      {/* Hero — Anchor identity + status + family chip */}
+      {/* Hero — Anchor identity + status */}
       <header className="relative overflow-hidden border-b border-anchor-mist-100">
         <div
-          className="absolute inset-0 opacity-[0.07] pointer-events-none"
+          className="absolute inset-0 opacity-[0.06] pointer-events-none"
           style={{
             backgroundImage:
-              'radial-gradient(circle at 20% 0%, #4f46e5 0, transparent 50%), radial-gradient(circle at 90% 100%, #fb7185 0, transparent 50%)',
+              'radial-gradient(circle at 15% 0%, #4f46e5 0, transparent 45%), radial-gradient(circle at 95% 100%, #fb7185 0, transparent 45%)',
           }}
           aria-hidden
         />
-        <div className="relative max-w-7xl mx-auto px-6 sm:px-8 pt-8 pb-6">
+        <div className="relative max-w-7xl mx-auto px-6 sm:px-8 pt-9 pb-7">
           <div className="flex items-start justify-between gap-6 flex-wrap">
-            <div>
-              <div className="flex items-center gap-3">
-                <AnchorMark />
-                <div>
-                  <h1 className="font-display text-3xl sm:text-4xl text-anchor-ink-900 leading-none">
-                    Anchor
-                  </h1>
-                  <p className="text-sm text-anchor-mist-400 mt-1">
-                    Hold the family steady when life is rocking the boat.
-                  </p>
-                </div>
+            <div className="flex items-center gap-3.5">
+              <AnchorMark />
+              <div>
+                <h1 className="font-display text-[34px] sm:text-[40px] text-anchor-ink-900 leading-none">
+                  Anchor
+                </h1>
+                <p className="text-[13px] text-anchor-mist-400 mt-1.5 tracking-wide">
+                  The intelligent layer that was always missing.
+                </p>
               </div>
-              <p className="mt-5 max-w-xl text-anchor-ink-100 text-[15px] leading-relaxed">
-                Three lenses watching simultaneously — the body, the mind, the
-                caregiver — and a dashboard that <em className="font-display not-italic text-anchor-indigo-700 font-semibold">re-composes itself</em> when
-                something needs your attention.
-              </p>
             </div>
 
-            <div className="flex flex-col items-end gap-3 text-right">
+            <div className="flex flex-col items-end gap-2 text-right">
               <StatusPill connected={connected} />
-              <div className="flex items-center gap-2 text-xs text-anchor-mist-400 font-mono">
-                <span className="px-2 py-1 rounded-full bg-white border border-anchor-mist-100">
-                  layout · <span className="text-anchor-ink-600">{livePlan?.layout ?? '…'}</span>
-                </span>
-                <span className="px-2 py-1 rounded-full bg-white border border-anchor-mist-100">
-                  v<span className="text-anchor-ink-600">{livePlan?.meta?.plan_version ?? '?'}</span>
-                </span>
-              </div>
+              {dev && (
+                <div className="flex items-center gap-2 text-[10px] text-anchor-mist-400 font-mono">
+                  <span className="px-2 py-1 rounded-full bg-white border border-anchor-mist-100">
+                    {livePlan?.layout ?? '…'}
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-white border border-anchor-mist-100">
+                    v{livePlan?.meta?.plan_version ?? '?'}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Family chip + demo triggers */}
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 text-xs text-anchor-mist-400">
-              <span className="font-display text-sm text-anchor-ink-600">The Reynolds family</span>
-              <span className="opacity-60">·</span>
-              <span>Tom 68 · Helen 84 · Sarah 42</span>
-            </div>
-            <nav className="flex flex-wrap gap-2" aria-label="Demo triggers">
-              {TRIGGERS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => fireTrigger(t.id)}
-                  disabled={busy}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 ${
-                    t.tone === 'reset'
-                      ? 'bg-white border border-anchor-mist-100 text-anchor-ink-100 hover:border-anchor-indigo-600 hover:text-anchor-indigo-600'
-                      : 'bg-white border border-anchor-mist-100 text-anchor-ink-600 hover:bg-anchor-indigo-600 hover:text-white hover:border-transparent shadow-soft'
-                  } ${busy ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </nav>
           </div>
         </div>
       </header>
+
+      {/* Demo trigger row — the actual hero CTA, prominent */}
+      <section className="bg-white/60 border-b border-anchor-mist-100 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-anchor-indigo-600 font-bold">
+                Try it
+              </p>
+              <p className="text-[15px] text-anchor-ink-900 font-medium mt-1">
+                Pick a scenario — watch the dashboard rebuild itself
+                <span className="text-anchor-mist-400 font-normal"> · The Reynolds family · Tom 68 · Helen 84 · Sarah 42</span>
+              </p>
+            </div>
+            <nav className="flex flex-wrap gap-2" aria-label="Demo triggers">
+              {TRIGGERS.map((t) => {
+                const isReset = t.tone === 'reset';
+                const isActive = activeTrigger === t.id && !busy;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => fireTrigger(t.id)}
+                    disabled={busy}
+                    title={t.sub}
+                    className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 ${
+                      isReset
+                        ? 'bg-transparent text-anchor-mist-400 hover:text-anchor-ink-600'
+                        : isActive
+                        ? 'bg-anchor-indigo-700 text-white shadow-lift'
+                        : 'bg-white border border-anchor-mist-100 text-anchor-ink-600 hover:bg-anchor-indigo-600 hover:text-white hover:border-transparent shadow-soft'
+                    } ${busy ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      </section>
 
       {/* Main */}
       <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8 grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -130,16 +148,18 @@ export default function App() {
         <section>
           {error && (
             <div className="mb-4 rounded-2xl bg-red-50 border border-state-red/30 p-4 text-sm text-state-red">
-              ⚠️ {error}
+              ⚠ {error}
             </div>
           )}
           {livePlan ? (
-            <div className="animate-[fadeIn_.4s_ease-out]">{renderLayout(livePlan)}</div>
+            <div className="animate-[fadeIn_.4s_ease-out]" key={livePlan.meta?.plan_version ?? 'v0'}>
+              {renderLayout(livePlan)}
+            </div>
           ) : (
             <EmptyState />
           )}
 
-          {livePlan?.meta?.fallback_reason && (
+          {dev && livePlan?.meta?.fallback_reason && (
             <p className="mt-6 text-xs italic text-anchor-mist-400">
               ⚠ Agent fell back to deterministic mode: {livePlan.meta.fallback_reason}
             </p>
@@ -150,15 +170,19 @@ export default function App() {
         <aside className="lg:sticky lg:top-6 lg:self-start space-y-5">
           <AnchorChat />
           <ReasoningPanel steps={steps} />
-          <p className="text-[11px] text-anchor-mist-400 italic px-2 leading-relaxed">
-            Anchor is not a medical device. It surfaces patterns from what
-            you tell it, so you can share them with your healthcare team.
-          </p>
         </aside>
       </div>
 
-      {/* Tiny CSS keyframes injected once */}
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }`}</style>
+      {/* Page-level disclaimer (single source) */}
+      <footer className="max-w-7xl mx-auto px-6 sm:px-8 pb-10">
+        <p className="text-[11px] text-anchor-mist-400 italic leading-relaxed text-center max-w-2xl mx-auto">
+          Anchor is not a medical device. It surfaces patterns from what you tell it,
+          so you can share them with your healthcare team. Always consult a qualified
+          clinician for medical decisions.
+        </p>
+      </footer>
+
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }`}</style>
     </main>
   );
 }
@@ -182,10 +206,10 @@ function AnchorMark() {
 function StatusPill({ connected }: { connected: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-wider uppercase ${
+      className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wider uppercase ${
         connected
-          ? 'bg-state-green/10 text-state-green border border-state-green/20'
-          : 'bg-state-red/10 text-state-red border border-state-red/20'
+          ? 'bg-state-green-soft text-state-green border border-state-green/30'
+          : 'bg-state-red-soft text-state-red border border-state-red/30'
       }`}
       aria-live="polite"
     >
@@ -193,7 +217,7 @@ function StatusPill({ connected }: { connected: boolean }) {
         className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-state-green animate-pulse' : 'bg-state-red'}`}
         aria-hidden
       />
-      {connected ? 'AG-UI live' : 'reconnecting…'}
+      {connected ? 'Live' : 'Reconnecting…'}
     </span>
   );
 }
@@ -205,27 +229,32 @@ function EmptyState() {
         <span className="text-2xl">⚓</span>
       </div>
       <p className="text-lg text-anchor-ink-600">Connecting to Anchor…</p>
-      <p className="text-sm mt-2">Waiting for the first UIPlan from the agent.</p>
+      <p className="text-sm mt-2">Waiting for the first dashboard from the agent.</p>
     </div>
   );
 }
 
 function ReasoningPanel({ steps }: { steps: Array<{ id: number; text: string }> }) {
   return (
-    <div className="rounded-2xl border border-anchor-mist-100 bg-white shadow-soft">
-      <div className="px-4 py-3 border-b border-anchor-mist-100 flex items-center gap-2">
+    <details className="rounded-2xl border border-anchor-mist-100 bg-white shadow-soft group" open={steps.length > 0}>
+      <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2.5 select-none">
         <span className="w-7 h-7 rounded-lg bg-anchor-indigo-600/10 grid place-items-center text-anchor-indigo-700" aria-hidden>
-          🧠
+          ◉
         </span>
         <div className="flex-1">
-          <h2 className="text-sm font-semibold text-anchor-ink-600">Agent reasoning</h2>
-          <p className="text-[11px] text-anchor-mist-400">Live AG-UI stream from Anchor</p>
+          <h2 className="text-[13px] font-semibold text-anchor-ink-900 leading-tight">
+            Agent reasoning
+          </h2>
+          <p className="text-[11px] text-anchor-mist-400 leading-tight mt-0.5">
+            {steps.length === 0 ? 'Waiting for activity…' : `${steps.length} step${steps.length === 1 ? '' : 's'} streamed`}
+          </p>
         </div>
-      </div>
-      <ol className="px-4 py-3 space-y-2 max-h-[40vh] overflow-y-auto">
+        <span className="text-anchor-mist-400 text-xs transition-transform group-open:rotate-90" aria-hidden>▸</span>
+      </summary>
+      <ol className="px-4 pb-4 space-y-1.5 max-h-[36vh] overflow-y-auto">
         {steps.length === 0 && (
-          <li className="text-xs italic text-anchor-mist-400">
-            Idle. Type or click a trigger to watch the agent compose a new dashboard.
+          <li className="text-[11px] italic text-anchor-mist-400">
+            Pick a scenario above or type in chat — Anchor will narrate what it does.
           </li>
         )}
         {steps.map((s) => (
@@ -237,6 +266,6 @@ function ReasoningPanel({ steps }: { steps: Array<{ id: number; text: string }> 
           </li>
         ))}
       </ol>
-    </div>
+    </details>
   );
 }

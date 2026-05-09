@@ -47,9 +47,13 @@ const config: Config = {
         },
         state: {
           green:  '#16a34a',
+          'green-soft':  '#ecfdf5',
           yellow: '#ca8a04',
+          'yellow-soft': '#fefce8',
           amber:  '#d97706',
+          'amber-soft':  '#fff7ed',
           red:    '#dc2626',
+          'red-soft':    '#fef2f2',
           gray:   '#737373',
         },
       },

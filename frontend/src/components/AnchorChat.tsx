@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from 'react';
  * AnchorChat — natural-language entry point.
  *
  * Caregivers type what they noticed → backend parses signals → dashboard
- * rebuilds via SSE. The visual language matches @copilotkit/react-ui's
- * chat patterns (and the renderAndWait approval flow) but is wired
- * directly to FastAPI so we don't need a Node-side runtime in the demo.
+ * rebuilds via SSE. Visual language matches CopilotKit's chat patterns
+ * (and the renderAndWait approval flow) but is wired directly to FastAPI
+ * so we don't need a Node-side runtime in the demo.
  */
 
 type ChatRole = 'user' | 'agent';
@@ -19,9 +19,9 @@ interface ChatTurn {
 }
 
 const SUGGESTIONS = [
-  { label: '🫀  Tom · ankles + appetite', prompt: "Tom's ankles are really swollen and he barely ate anything" },
-  { label: '🧠  Helen · same question 4×', prompt: 'Mom asked me the same question four times today' },
-  { label: '💧  Sarah · breaking point',    prompt: "I really don't know how much longer I can do this" },
+  { label: 'Tom · ankles + appetite',  prompt: "Tom's ankles are really swollen and he barely ate anything" },
+  { label: 'Helen · same question 4×', prompt: 'Mom asked me the same question four times today' },
+  { label: 'Sarah · breaking point',   prompt: "I really don't know how much longer I can do this" },
 ];
 
 export default function AnchorChat() {
@@ -30,7 +30,7 @@ export default function AnchorChat() {
       id: 'seed',
       role: 'agent',
       text:
-        "Hi — I'm watching Tom, Helen, and you. Just type what you noticed and I'll handle the rest.",
+        "Hi — just type what you noticed about Tom, Helen, or yourself. I'll do the rest.",
     },
   ]);
   const [draft, setDraft] = useState('');
@@ -58,8 +58,11 @@ export default function AnchorChat() {
       });
       if (!res.ok) throw new Error(`Chat failed: HTTP ${res.status}`);
       const body = await res.json();
+      // Show a friendly meta line that doesn't leak codes
       const meta = body.detected_signals?.length
-        ? `${body.detected_signals.length} signal(s) · target: ${body.person_id ?? 'unknown'}`
+        ? body.person_id
+          ? `Updated ${body.person_id.charAt(0).toUpperCase()}${body.person_id.slice(1)}'s dashboard`
+          : 'Recorded for the family timeline'
         : undefined;
       setTurns((t) => [
         ...t,
@@ -74,17 +77,22 @@ export default function AnchorChat() {
 
   return (
     <div className="rounded-2xl border border-anchor-mist-100 bg-white shadow-soft overflow-hidden">
-      <header className="px-4 py-3 bg-indigo-gradient text-white flex items-center gap-2.5">
-        <span className="w-7 h-7 rounded-lg bg-white/15 grid place-items-center" aria-hidden>💬</span>
+      {/* Calmer header — cream surface, indigo accent only on the dot */}
+      <header className="px-4 py-3.5 bg-anchor-cream-50 border-b border-anchor-mist-100 flex items-center gap-2.5">
+        <span className="w-8 h-8 rounded-xl bg-anchor-indigo-600/10 grid place-items-center text-anchor-indigo-700" aria-hidden>
+          ✿
+        </span>
         <div className="flex-1">
-          <h2 className="text-sm font-semibold leading-tight">Tell Anchor</h2>
-          <p className="text-[11px] opacity-80 leading-tight">Natural language · CopilotKit + Pydantic AI</p>
+          <h2 className="text-[14px] font-semibold text-anchor-ink-900 leading-tight">Tell Anchor</h2>
+          <p className="text-[11px] text-anchor-mist-400 leading-tight mt-0.5">
+            Plain English. Anchor reads between the lines.
+          </p>
         </div>
       </header>
 
       <div
         ref={scrollRef}
-        className="px-4 py-3 max-h-[240px] min-h-[140px] overflow-y-auto space-y-2 bg-anchor-cream-50"
+        className="px-4 py-3 max-h-[260px] min-h-[140px] overflow-y-auto space-y-2 bg-white"
         aria-live="polite"
         aria-label="Chat transcript"
       >
@@ -94,22 +102,22 @@ export default function AnchorChat() {
             className={`flex ${t.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[88%] rounded-2xl px-3 py-2 text-[13px] leading-snug shadow-sm ${
+              className={`max-w-[88%] rounded-2xl px-3.5 py-2 text-[13px] leading-snug shadow-sm ${
                 t.role === 'user'
                   ? 'bg-anchor-indigo-600 text-white rounded-br-md'
-                  : 'bg-white border border-anchor-mist-100 text-anchor-ink-600 rounded-bl-md'
+                  : 'bg-anchor-cream-100 text-anchor-ink-600 rounded-bl-md'
               }`}
             >
               <p className="whitespace-pre-line">{t.text}</p>
               {t.meta && (
-                <p className="mt-1 text-[10px] opacity-80 font-mono">{t.meta}</p>
+                <p className="mt-1 text-[10px] opacity-80">{t.meta}</p>
               )}
             </div>
           </div>
         ))}
         {busy && (
           <div className="flex justify-start">
-            <div className="bg-white border border-anchor-mist-100 rounded-2xl rounded-bl-md px-3 py-2 text-xs italic text-anchor-mist-400 inline-flex items-center gap-1.5">
+            <div className="bg-anchor-cream-100 rounded-2xl rounded-bl-md px-3 py-2 text-xs italic text-anchor-mist-400 inline-flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-anchor-indigo-600 animate-pulse" />
               <span className="w-1.5 h-1.5 rounded-full bg-anchor-indigo-600 animate-pulse" style={{ animationDelay: '0.15s' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-anchor-indigo-600 animate-pulse" style={{ animationDelay: '0.3s' }} />
@@ -121,30 +129,32 @@ export default function AnchorChat() {
 
       {error && (
         <p className="px-4 py-2 text-xs text-state-red bg-red-50 border-t border-state-red/30">
-          ⚠️ {error}
+          ⚠ {error}
         </p>
       )}
 
-      <div className="px-3 pt-2.5 pb-1.5 flex flex-wrap gap-1.5 border-t border-anchor-mist-100 bg-anchor-cream-50">
-        <span className="text-[10px] uppercase tracking-wider text-anchor-mist-400 font-semibold w-full px-1">
-          Try one
-        </span>
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s.prompt}
-            type="button"
-            onClick={() => send(s.prompt)}
-            disabled={busy}
-            className="text-[11px] px-2.5 py-1 rounded-full bg-white text-anchor-ink-600 border border-anchor-mist-100 hover:bg-anchor-indigo-600 hover:text-white hover:border-transparent disabled:opacity-50 transition-colors"
-            title={s.prompt}
-          >
-            {s.label}
-          </button>
-        ))}
+      <div className="px-3 pt-2.5 pb-2 border-t border-anchor-mist-100 bg-anchor-cream-50">
+        <p className="text-[10px] uppercase tracking-[0.12em] text-anchor-mist-400 font-semibold mb-2 px-1">
+          Quick examples
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s.prompt}
+              type="button"
+              onClick={() => send(s.prompt)}
+              disabled={busy}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-white text-anchor-ink-600 border border-anchor-mist-100 hover:bg-anchor-indigo-600 hover:text-white hover:border-transparent disabled:opacity-50 transition-colors"
+              title={s.prompt}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <form
-        className="px-3 py-3 flex gap-2 bg-white"
+        className="px-3 py-3 flex gap-2 bg-white border-t border-anchor-mist-100"
         onSubmit={(e) => {
           e.preventDefault();
           send(draft);
@@ -157,12 +167,12 @@ export default function AnchorChat() {
           placeholder="Type what you noticed…"
           disabled={busy}
           aria-label="Observation message"
-          className="flex-1 rounded-xl border border-anchor-mist-100 px-3 py-2 text-sm bg-anchor-cream-50 focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 focus:border-anchor-indigo-600 focus:bg-white disabled:opacity-50 transition"
+          className="flex-1 rounded-xl border border-anchor-mist-100 px-3 py-2 text-[13px] bg-anchor-cream-50 focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 focus:border-anchor-indigo-600 focus:bg-white disabled:opacity-50 transition"
         />
         <button
           type="submit"
           disabled={busy || !draft.trim()}
-          className="px-4 py-2 rounded-xl bg-anchor-indigo-600 text-white font-semibold text-sm hover:bg-anchor-indigo-700 disabled:opacity-40 focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 transition shadow-soft"
+          className="px-4 py-2 rounded-xl bg-anchor-indigo-600 text-white font-semibold text-[13px] hover:bg-anchor-indigo-700 disabled:opacity-40 focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 transition shadow-soft"
         >
           Send
         </button>
