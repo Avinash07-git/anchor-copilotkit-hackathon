@@ -16,7 +16,7 @@
  */
 import { z } from 'zod';
 import { useComponent, useHumanInTheLoop } from '@copilotkit/react-core/v2';
-import { useCopilotReadable } from '@copilotkit/react-core';
+import { useCopilotAdditionalInstructions, useCopilotReadable } from '@copilotkit/react-core';
 import { DriftScoreCard, PatternAlertCard, CombinedTriageView } from './A2UIComponents';
 import type { UIPlan } from '../types/uiPlan';
 
@@ -102,6 +102,24 @@ interface Props {
 // ---------------------------------------------------------------------------
 
 export default function CopilotKitProtocolProof({ plan }: Props) {
+  // Inject AI system instructions (replaces the removed CopilotPopup instructions prop)
+  useCopilotAdditionalInstructions(
+    {
+      instructions: `You are Anchor, a calm AI companion for family caregivers.
+The Reynolds family: Tom 68 (heart failure, body lens), Helen 84 (early dementia, mind lens), Sarah 42 (primary caregiver, caregiver lens).
+
+When the user asks about the family or dashboard:
+- Call showDriftScore for each relevant person to display their live wellbeing card
+- Call showPatternAlert when a threshold has been crossed (check the dashboard state)
+- Call showCombinedTriage when all three lenses are active simultaneously
+- Call confirmFamilyMessage before sending any family communication
+
+Never make clinical claims. Surface patterns, not diagnoses. Always include citations verbatim.`,
+      available: 'enabled',
+    },
+    []
+  );
+
   // Share the live dashboard state with the AI so it knows what's happening
   useCopilotReadable(
     {
