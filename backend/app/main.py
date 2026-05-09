@@ -174,8 +174,25 @@ def _apply_trigger(trigger: dict) -> None:
         )
 
 
+def _seed_prior_context_for(person_id: str) -> None:
+    """Seed the rolling-window prior observations for one person.
+
+    A demo trigger only adds the LIVE observation that crosses the threshold.
+    The prior context (Tom's day-3/6/8/10 notes, Helen's 4-week baseline,
+    Sarah's 14-day private notes) needs to be present in the store for the
+    rolling-window math to land in the intended band. Reset clears everything
+    to true green; each trigger reseeds just the lens it needs."""
+    from app.data.demo_dataset import TOM_LOGS, HELEN_LOGS, SARAH_LOGS
+    catalogue = {"tom": TOM_LOGS, "helen": HELEN_LOGS, "sarah": SARAH_LOGS}
+    logs = catalogue.get(person_id, [])
+    for day, observer, text in logs:
+        log_observation(person_id, observer, text, day)
+
+
 async def _run_trigger(trigger_id: str) -> dict:
     if trigger_id == "combined":
+        for pid in ("tom", "helen", "sarah"):
+            _seed_prior_context_for(pid)
         for t in TRIGGER_SEQUENCE:
             if t.get("id") == "combined" or t.get("person") is None:
                 continue
@@ -183,6 +200,8 @@ async def _run_trigger(trigger_id: str) -> dict:
         narration = _TRIGGER_NARRATIONS["combined"]
     else:
         trigger = _trigger_by_id(trigger_id)
+        if trigger.get("person"):
+            _seed_prior_context_for(trigger["person"])
         _apply_trigger(trigger)
         narration = _TRIGGER_NARRATIONS.get(trigger_id, [f"Running trigger {trigger_id}..."])
 

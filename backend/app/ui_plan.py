@@ -186,6 +186,57 @@ class CombinedTriageViewProps(BaseModel):
     disclaimer: str
 
 
+# --- Family Load Meter -----------------------------------------------------
+# System-level meter — Anchor tracks the care system, not just patients.
+# The originality moment: most healthcare apps track individuals; this one
+# notices when a family has too much load on too few shoulders.
+
+
+class FamilyLoadMeterProps(BaseModel):
+    level: Literal["calm", "rising", "high", "critical"]
+    headline: str  # "Family load: High"
+    sub: str       # "3 active risks, 1 caregiver, no confirmed backup"
+    factors: list[str]  # short bullets, e.g. ["Tom: amber", "Helen: red", "No respite booked"]
+    score: int     # 0-100 (lower = more loaded), used for the gauge fill
+
+
+# --- Generated UI Receipt --------------------------------------------------
+# The "Why this UI?" moment that makes generative UI visible to judges.
+# Surfaces the agent's interface decision: layout chosen + reason + the
+# components and tools that produced it.
+
+
+class GenerationReceiptProps(BaseModel):
+    layout_chosen: str          # "combined_triage"
+    reason: str                  # short human reason
+    components_rendered: list[str]
+    tools_used: list[str]
+    plan_version: int
+    triggered_by: str | None = None
+
+
+# --- Generated Care Plan ---------------------------------------------------
+# The "agent generates a 3-step plan" moment. Steps are interactive:
+# approve, dismiss, or assign. Replaces the "scripted dashboard" feel with
+# a living workflow.
+
+
+class CarePlanStep(BaseModel):
+    id: str                       # stable id so frontend can track per-step state
+    icon: str                     # short emoji or 1-letter glyph
+    title: str                    # "Call Tom's cardiologist tomorrow morning"
+    detail: str                   # one sentence reason
+    assignee_hint: str | None = None  # "Sarah" / "Mark" / "neighbour Mrs Chen"
+    severity: Literal["red", "amber", "yellow", "green"] = "amber"
+
+
+class CarePlanCardProps(BaseModel):
+    title: str
+    subtitle: str
+    steps: list[CarePlanStep]
+    disclaimer: str
+
+
 # --- Component envelope ----------------------------------------------------
 
 
@@ -200,6 +251,9 @@ ComponentType = Literal[
     "QuickActionCard",
     "ApprovalPrompt",
     "CombinedTriageView",
+    "FamilyLoadMeter",
+    "GenerationReceipt",
+    "CarePlanCard",
 ]
 
 

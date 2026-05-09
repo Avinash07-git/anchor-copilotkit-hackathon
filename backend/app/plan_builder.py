@@ -482,10 +482,205 @@ def _meta(triggered_by: str | None, plan_version: int) -> dict:
     }
 
 
+# --- Family Load Meter (system-level) ------------------------------------
+# Anchor tracks the care SYSTEM, not just the patients. The originality move.
+
+_LOAD_LEVELS = {
+    "calm":     {"score": 95, "headline": "Family load: Calm",     "tone": "All three lenses steady. Anchor is quietly tracking the system."},
+    "rising":   {"score": 70, "headline": "Family load: Rising",   "tone": "Something is starting to drift. Worth a glance, not a panic."},
+    "high":     {"score": 40, "headline": "Family load: High",     "tone": "Multiple lenses asking for attention; one caregiver shoulders most of it."},
+    "critical": {"score": 18, "headline": "Family load: Critical", "tone": "Three crossings at once. The care system needs decompressing tonight."},
+}
+
+
+def _family_load_meter(scores: dict[str, dict], matches: dict[str, dict]) -> dict:
+    """Aggregate the three lenses into a single system-level load reading."""
+    states = {pid: scores[pid]["state"] for pid in ("tom", "helen", "sarah")}
+    n_red = sum(1 for s in states.values() if s == "red")
+    n_amber = sum(1 for s in states.values() if s == "amber")
+    n_yellow = sum(1 for s in states.values() if s == "yellow")
+    sarah_state = states.get("sarah", "green")
+    has_backup = False  # demo: no backup confirmed yet
+
+    # Decide level — caregiver crossings count double because the caregiver
+    # IS the load-bearer; if she goes, the whole system stalls.
+    weight = n_red * 3 + n_amber * 2 + n_yellow * 1
+    if sarah_state in ("amber", "red"):
+        weight += 2  # caregiver overload multiplier
+    if weight >= 7:
+        level = "critical"
+    elif weight >= 4:
+        level = "high"
+    elif weight >= 1:
+        level = "rising"
+    else:
+        level = "calm"
+
+    factors: list[str] = []
+    person_label = {"tom": "Tom", "helen": "Helen", "sarah": "Sarah"}
+    for pid in ("tom", "helen", "sarah"):
+        s = states[pid]
+        if s == "red":
+            factors.append(f"{person_label[pid]}: red — needs action now")
+        elif s == "amber":
+            factors.append(f"{person_label[pid]}: amber — worth raising")
+        elif s == "yellow":
+            factors.append(f"{person_label[pid]}: yellow — keeping an eye on")
+    if sarah_state in ("amber", "red"):
+        factors.append("One caregiver carrying most of the load")
+    if not has_backup and weight >= 2:
+        factors.append("No backup caregiver confirmed for tonight")
+    if not factors:
+        factors.append("All three lenses calm")
+
+    base = _LOAD_LEVELS[level]
+    return {
+        "type": "FamilyLoadMeter",
+        "props": {
+            "level": level,
+            "headline": base["headline"],
+            "sub": base["tone"],
+            "factors": factors[:4],
+            "score": base["score"],
+        },
+    }
+
+
+# --- Generated Care Plan -------------------------------------------------
+# Replaces the "scripted dashboard" feel with a living, interactive workflow.
+# Each step has a stable id so the frontend can track approve/dismiss
+# state without back-and-forth. Steps are generated from the actual scores
+# + patterns the system just observed — not a hardcoded list.
+
+
+def _care_plan_card(scores: dict[str, dict], matches: dict[str, dict]) -> dict | None:
+    """Generate a 3-5 step actionable care plan for the current situation.
+
+    Skipped entirely when nothing is amber/red — the calm dashboard already
+    says "nothing needs your attention" and a care plan would contradict it.
+    """
+    if not matches:
+        return None
+
+    severity_order = {"red": 0, "amber": 1, "yellow": 2, "green": 3}
+    pids_by_urgency = sorted(matches.keys(), key=lambda p: severity_order[scores[p]["color"]])
+
+    steps: list[dict] = []
+    for pid in pids_by_urgency:
+        c = scores[pid]["color"]
+        if pid == "tom":
+            steps.append({
+                "id": "tom_call_cardio",
+                "icon": "📞",
+                "title": "Call Tom's cardiologist tomorrow morning",
+                "detail": "Share the 7-day pattern: edema + missed anticoagulant + appetite drop. Use the talking points card.",
+                "assignee_hint": "Sarah",
+                "severity": c,
+            })
+        if pid == "helen":
+            steps.append({
+                "id": "helen_neighbour_check",
+                "icon": "🏠",
+                "title": "Ask Mrs Chen to look in on Helen this evening",
+                "detail": "She's next door. Quick stove-and-keys check; no big ask. Anchor can draft the message.",
+                "assignee_hint": "Mrs Chen (neighbour)",
+                "severity": c,
+            })
+            steps.append({
+                "id": "helen_neuro_doc",
+                "icon": "📝",
+                "title": "Document this week's notes for the neurologist",
+                "detail": "Anchor has the contributor map ready — 4 observers logged 9× her usual rate.",
+                "assignee_hint": "Anchor will prep",
+                "severity": c,
+            })
+        if pid == "sarah":
+            steps.append({
+                "id": "sarah_respite",
+                "icon": "🌿",
+                "title": "Ask brother Mark for a 2-hour respite this weekend",
+                "detail": "Anchor will draft the message — softer or more direct, your call.",
+                "assignee_hint": "Mark (Sarah's brother)",
+                "severity": c,
+            })
+
+    # Always close with a "what to monitor tonight" step — the feedback's
+    # "What to monitor tonight" beat. Cheap to include, hugely caregiver-y.
+    steps.append({
+        "id": "monitor_tonight",
+        "icon": "🌙",
+        "title": "What to watch tonight",
+        "detail": " · ".join([
+            "Tom: any new shortness of breath or rapid weight gain"
+            if "tom" in matches else "Tom: steady",
+            "Helen: confusion at sundown is the marker"
+            if "helen" in matches else "Helen: steady",
+            "Yourself: 7 hours sleep is a clinical decision, not a luxury"
+            if "sarah" in matches else "Sarah: steady",
+        ]),
+        "assignee_hint": None,
+        "severity": "yellow",
+    })
+
+    title = "Anchor generated a care plan for tonight"
+    if len(matches) == 1:
+        only = pids_by_urgency[0]
+        nm = {"tom": "Tom", "helen": "Helen", "sarah": "Sarah"}[only]
+        title = f"Anchor's plan for {nm} — next 24 hours"
+    elif len(matches) >= 2:
+        title = "Anchor's plan for the family — next 24 hours"
+
+    return {
+        "type": "CarePlanCard",
+        "props": {
+            "title": title,
+            "subtitle": "Each step is a suggestion, not a directive. Approve, edit, or dismiss.",
+            "steps": steps[:5],
+            "disclaimer": DISCLAIMER,
+        },
+    }
+
+
+# --- Generation Receipt --------------------------------------------------
+# Makes the "agent generated this UI" decision visually obvious.
+
+_LAYOUT_REASONS = {
+    "calm_dashboard":  "No patterns crossed any threshold — three drift cards are enough.",
+    "single_alert":    "One person crossed a clinical threshold. Surfaced their evidence bundle.",
+    "dual_risk":       "Two crossings — patient + caregiver. Split-pane evidence.",
+    "combined_triage": "Multiple crossings at once. Each person gets their own narrative section in urgency order.",
+}
+
+_LAYOUT_TOOLS = {
+    "calm_dashboard":  ["update_wellbeing_score", "compute_score_history"],
+    "single_alert":    ["parse_observation_log", "update_wellbeing_score", "check_pattern_match", "draft_talking_points"],
+    "dual_risk":       ["parse_observation_log", "update_wellbeing_score", "check_pattern_match", "find_local_support"],
+    "combined_triage": ["parse_observation_log", "update_wellbeing_score", "check_pattern_match", "calculate_observation_rate", "draft_talking_points"],
+}
+
+
+def _generation_receipt(layout: str, components: list[dict], plan_version: int, triggered_by: str | None) -> dict:
+    rendered = sorted({c["type"] for c in components if isinstance(c, dict) and c.get("type")})
+    return {
+        "type": "GenerationReceipt",
+        "props": {
+            "layout_chosen": layout,
+            "reason": _LAYOUT_REASONS.get(layout, "Layout selected by the agent."),
+            "components_rendered": rendered,
+            "tools_used": _LAYOUT_TOOLS.get(layout, []),
+            "plan_version": plan_version,
+            "triggered_by": triggered_by,
+        },
+    }
+
+
 def _calm_dashboard(scores: dict[str, dict], plan_version: int, trigger: str | None) -> dict:
+    components: list[dict] = [_family_load_meter(scores, {})]
+    components += [_drift_card(pid, scores[pid]) for pid in ("tom", "helen", "sarah")]
+    components.append(_generation_receipt("calm_dashboard", components, plan_version, trigger))
     return {
         "layout": "calm_dashboard",
-        "components": [_drift_card(pid, scores[pid]) for pid in ("tom", "helen", "sarah")],
+        "components": components,
         "meta": _meta(trigger, plan_version),
     }
 
@@ -497,7 +692,11 @@ def _single_alert(
     plan_version: int,
     trigger: str | None,
 ) -> dict:
-    components = [_drift_card(pid, scores[pid]) for pid in ("tom", "helen", "sarah")]
+    components: list[dict] = [_family_load_meter(scores, matches)]
+    care_plan = _care_plan_card(scores, matches)
+    if care_plan:
+        components.append(care_plan)
+    components += [_drift_card(pid, scores[pid]) for pid in ("tom", "helen", "sarah")]
     components.append(_pattern_alert_card(matches[person_id]))
     audience = {"tom": "Tom's cardiologist", "helen": "Helen's neurologist", "sarah": "Sarah"}[person_id]
     components.append(_talking_points_card(person_id, audience))
@@ -513,6 +712,7 @@ def _single_alert(
     components.append(_observation_log_card(person_id, obs_meta[0], obs_meta[1]))
     if person_id == "helen":
         components.append(_contributor_map("helen"))
+    components.append(_generation_receipt("single_alert", components, plan_version, trigger))
     return {
         "layout": "single_alert",
         "components": components,
@@ -586,7 +786,11 @@ def _combined_triage(
         },
     }
 
-    components: list[dict] = [triage]
+    components: list[dict] = [_family_load_meter(scores, matches)]
+    care_plan = _care_plan_card(scores, matches)
+    if care_plan:
+        components.append(care_plan)
+    components.append(triage)
 
     # All three drift cards together at the top — the situation overview.
     components.extend(_drift_card(pid, scores[pid]) for pid in ("tom", "helen", "sarah"))
@@ -622,6 +826,7 @@ def _combined_triage(
         elif pid == "sarah":
             components.append(_respite_card())
 
+    components.append(_generation_receipt("combined_triage", components, plan_version, trigger))
     return {
         "layout": "combined_triage",
         "components": components,

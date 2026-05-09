@@ -38,13 +38,26 @@ const SupportGrid = ({ items }: { items: PlanComponent[] }) => {
   );
 };
 
+// Helpers — pull out the meta cards regardless of where they sit in the
+// component list so layouts can position them deterministically.
+const META_TYPES = new Set(['FamilyLoadMeter', 'CarePlanCard', 'GenerationReceipt']);
+const partition = (components: PlanComponent[]) => {
+  const familyLoad = components.find((c) => c.type === 'FamilyLoadMeter');
+  const carePlan = components.find((c) => c.type === 'CarePlanCard');
+  const receipt = components.find((c) => c.type === 'GenerationReceipt');
+  const rest = components.filter((c) => !META_TYPES.has(c.type));
+  return { familyLoad, carePlan, receipt, rest };
+};
+
 // --- Calm dashboard ------------------------------------------------------
 
 const CalmDashboard = ({ components }: { components: PlanComponent[] }) => {
-  const drifts = components.filter((c) => c.type === 'DriftScoreCard');
-  const others = components.filter((c) => c.type !== 'DriftScoreCard');
+  const { familyLoad, receipt, rest } = partition(components);
+  const drifts = rest.filter((c) => c.type === 'DriftScoreCard');
+  const others = rest.filter((c) => c.type !== 'DriftScoreCard');
   return (
     <div className="space-y-6">
+      {familyLoad && renderComponent(familyLoad)}
       <div className="relative overflow-hidden rounded-3xl border border-anchor-mist-100 bg-white shadow-soft">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-state-green via-anchor-indigo-400 to-state-green opacity-50" />
         <div className="flex items-center gap-5 px-7 py-6">
@@ -70,6 +83,7 @@ const CalmDashboard = ({ components }: { components: PlanComponent[] }) => {
       </div>
       <PersonStack items={drifts} />
       {others.length > 0 && <SupportGrid items={others} />}
+      {receipt && renderComponent(receipt)}
     </div>
   );
 };
@@ -77,12 +91,16 @@ const CalmDashboard = ({ components }: { components: PlanComponent[] }) => {
 // --- Single alert --------------------------------------------------------
 
 const SingleAlert = ({ components }: { components: PlanComponent[] }) => {
-  const drifts = components.filter((c) => c.type === 'DriftScoreCard');
-  const others = components.filter((c) => c.type !== 'DriftScoreCard');
+  const { familyLoad, carePlan, receipt, rest } = partition(components);
+  const drifts = rest.filter((c) => c.type === 'DriftScoreCard');
+  const others = rest.filter((c) => c.type !== 'DriftScoreCard');
   return (
     <div className="space-y-6">
+      {familyLoad && renderComponent(familyLoad)}
+      {carePlan && renderComponent(carePlan)}
       <PersonStack items={drifts} />
       <SupportGrid items={others} />
+      {receipt && renderComponent(receipt)}
     </div>
   );
 };
@@ -259,9 +277,10 @@ const PersonSection = ({
 };
 
 const CombinedTriage = ({ components }: { components: PlanComponent[] }) => {
-  const triage = components.find((c) => c.type === 'CombinedTriageView');
-  const drifts = components.filter((c) => c.type === 'DriftScoreCard');
-  const supporting = components.filter(
+  const { familyLoad, carePlan, receipt, rest } = partition(components);
+  const triage = rest.find((c) => c.type === 'CombinedTriageView');
+  const drifts = rest.filter((c) => c.type === 'DriftScoreCard');
+  const supporting = rest.filter(
     (c) => c.type !== 'CombinedTriageView' && c.type !== 'DriftScoreCard',
   );
 
@@ -285,6 +304,13 @@ const CombinedTriage = ({ components }: { components: PlanComponent[] }) => {
 
   return (
     <div className="space-y-10">
+      {/* Family load meter and the generated care plan come first — they
+          tell judges INSTANTLY: "the agent looked at the whole system and
+          composed a response." Everything below is the per-person evidence
+          backing those decisions. */}
+      {familyLoad && renderComponent(familyLoad)}
+      {carePlan && renderComponent(carePlan)}
+
       {/* Executive summary stays at top — the at-a-glance triage. */}
       {triage && <div>{renderComponent(triage)}</div>}
 
@@ -302,6 +328,8 @@ const CombinedTriage = ({ components }: { components: PlanComponent[] }) => {
           total={personOrder.length}
         />
       ))}
+
+      {receipt && renderComponent(receipt)}
     </div>
   );
 };

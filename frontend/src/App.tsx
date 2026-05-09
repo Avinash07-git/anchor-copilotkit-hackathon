@@ -103,17 +103,18 @@ export default function App() {
         </div>
       </header>
 
-      {/* Demo trigger row */}
+      {/* Demo shortcuts row — explicitly framed as shortcuts, not as the
+          primary input. The hero is "Tell Anchor" (the floating drawer). */}
       <section className="bg-white/60 border-b border-anchor-mist-100 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 sm:px-8 py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.16em] text-anchor-indigo-600 font-bold">
-                Try it
+              <p className="text-[10px] uppercase tracking-[0.16em] text-anchor-mist-400 font-bold">
+                Demo shortcuts · skip the typing
               </p>
               <p className="text-[15px] text-anchor-ink-900 font-medium mt-1">
-                Pick a scenario — watch the dashboard rebuild itself
-                <span className="text-anchor-mist-400 font-normal"> · The Reynolds family · Tom 68 · Helen 84 · Sarah 42</span>
+                The real input is the <span className="text-anchor-indigo-600 font-semibold">Tell Anchor</span> drawer — these jump straight to a scenario.
+                <span className="text-anchor-mist-400 font-normal block sm:inline"> · The Reynolds family · Tom 68 · Helen 84 · Sarah 42</span>
               </p>
             </div>
             <nav className="flex flex-wrap gap-2" aria-label="Demo triggers">

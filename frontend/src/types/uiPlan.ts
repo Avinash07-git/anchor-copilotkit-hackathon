@@ -153,6 +153,39 @@ export interface CombinedTriageViewProps {
 
 // --- Component envelope ---------------------------------------------------
 
+export interface FamilyLoadMeterProps {
+  level: 'calm' | 'rising' | 'high' | 'critical';
+  headline: string;
+  sub: string;
+  factors: string[];
+  score: number;
+}
+
+export interface GenerationReceiptProps {
+  layout_chosen: string;
+  reason: string;
+  components_rendered: string[];
+  tools_used: string[];
+  plan_version: number;
+  triggered_by?: string | null;
+}
+
+export interface CarePlanStep {
+  id: string;
+  icon: string;
+  title: string;
+  detail: string;
+  assignee_hint?: string | null;
+  severity: 'red' | 'amber' | 'yellow' | 'green';
+}
+
+export interface CarePlanCardProps {
+  title: string;
+  subtitle: string;
+  steps: CarePlanStep[];
+  disclaimer: string;
+}
+
 export type ComponentType =
   | 'DriftScoreCard'
   | 'PatternAlertCard'
@@ -163,7 +196,10 @@ export type ComponentType =
   | 'ObservationLogCard'
   | 'QuickActionCard'
   | 'ApprovalPrompt'
-  | 'CombinedTriageView';
+  | 'CombinedTriageView'
+  | 'FamilyLoadMeter'
+  | 'GenerationReceipt'
+  | 'CarePlanCard';
 
 export interface PlanComponent {
   type: ComponentType;
