@@ -1,4 +1,4 @@
-"""Pre-loaded demo data for Bedside.
+"""Pre-loaded demo data for Anchor.
 
 The hackathon demo runs against a single fixed family — the Reynolds — and a
 fixed timeline of observations. Real signal extraction + scoring is wired in

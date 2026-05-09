@@ -1,4 +1,4 @@
-// Bedside UI Plan types — mirrors backend/app/ui_plan.py.
+// Anchor UI Plan types — mirrors backend/app/ui_plan.py.
 //
 // The agent emits a UIPlan as JSON; the React renderer interprets it and
 // mounts the right A2UI components inside the chosen layout. Keep this

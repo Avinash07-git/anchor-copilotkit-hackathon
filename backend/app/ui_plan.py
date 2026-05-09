@@ -1,4 +1,4 @@
-"""UI Plan models — the contract between the Bedside agent and the React renderer.
+"""UI Plan models — the contract between the Anchor agent and the React renderer.
 
 The agent emits a UIPlan (JSON); the frontend interprets it and mounts the
 right A2UI components inside the chosen layout. See ANCHOR_SPEC.md §6 + §7.

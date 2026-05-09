@@ -1,4 +1,4 @@
-"""Bedside FastAPI app — entry point.
+"""Anchor FastAPI app — entry point.
 
 Run locally:
     uv run uvicorn app.main:app --reload --port 8000
@@ -420,7 +420,7 @@ async def copilotkit_runtime_stub(request: Request) -> dict:
     own chat surface against /api/chat. This keeps the <CopilotKit /> React
     provider quiet during dev so the console isn't full of 404s.
     """
-    return {"ok": True, "runtime": "bedside-bridge"}
+    return {"ok": True, "runtime": "anchor-bridge"}
 
 
 # --- AG-UI style SSE stream ------------------------------------------------

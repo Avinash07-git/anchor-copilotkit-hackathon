@@ -1,4 +1,4 @@
-"""MCP tools for Bedside.
+"""MCP tools for Anchor.
 
 Eight tools, grouped by concern:
   - observation_parser : parse_observation_log, log_observation

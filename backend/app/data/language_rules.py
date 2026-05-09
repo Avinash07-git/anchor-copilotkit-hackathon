@@ -1,6 +1,6 @@
 """Safer-language constants + instrument citations — non-negotiable.
 
-Bedside is NOT a medical device. Every user-facing string passes through this
+Anchor is NOT a medical device. Every user-facing string passes through this
 filter. See ANCHOR_SPEC.md §10. If you find yourself reaching for a clinical
 verb, look here for the replacement.
 
