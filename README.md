@@ -17,11 +17,15 @@ is composed by the agent for the moment it's in.
 
 | Moment | What the agent renders |
 |---|---|
-| Calm baseline | Three quiet `DriftScoreCard`s with avatars + green sparklines, breathing pulse hero band |
-| Tom's edema + missed med trips the HF Symptom Framework | Single-alert layout, amber-glow card, sparkline crashes 95→31, `PatternAlertCard` cited PMC9070923 + `TalkingPointsCard` for his cardiologist |
-| Helen's family quietly logs 4 cognitive incidents in one week | Red `ContributorMap` with a 4-week NPI baseline overlay |
-| Sarah types *"I don't know how much longer I can do this"* | Dual-risk split-pane with a draft message + `ApprovalPrompt` for human-in-the-loop confirmation (CopilotKit `renderAndWait` pattern) |
-| All three at once | `CombinedTriageView` — the agent picks the row order based on its judgement of urgency |
+| Calm baseline | Three quiet `DriftScoreCard`s + green sparklines + `FamilyLoadMeter` at calm |
+| Tom's HF pattern fires | `single_alert` — amber card, sparkline crashes 95→37, `FamilyLoadMeter` rising, `CarePlanCard` with 4 delegated steps |
+| Helen's family logs 4 cognitive incidents | `combined_triage` — contributor pattern + cognitive drift chart |
+| Sarah types *"I don't know how much longer I can do this"* | Caregiver crossing added; `FamilyLoadMeter` → critical; `CarePlanCard` updated with Z-domain steps |
+| All three at once | `combined_triage` — ordered by urgency, `GenerationReceipt` shows which tools fired |
+
+**The "Copilot That Ships" moment:** clicking "Approve & draft" on any care plan step
+opens an inline `DraftMessagePanel` with the message pre-written and 5 tone chips
+(Caring / Softer / More direct / Shorter / Add specifics) that regenerate the draft live.
 
 A chatbot can't do this. A pre-built dashboard can't do this. **That's
 the point.**
@@ -99,41 +103,43 @@ curl -X POST http://localhost:8000/demo/uc3
 Each call returns a fresh `UIPlan` JSON. The frontend subscribes via SSE
 and re-renders the dashboard live.
 
-For the **on-stage version** of the demo (chat-driven), see
-`SESSION_HANDOFF.md` §10.
+For the full interactive demo path (chat-driven), see `JUDGES_README.md`.
 
 ## Repository layout
 
 ```
+JUDGES_README.md            # ⭐ Start here — demo path + protocol map
 ANCHOR_SPEC.md              # Full product spec — single source of truth
-SESSION_HANDOFF.md          # ⭐ Read first when resuming work
 SUBMISSION.md               # Hackathon submission packet
-docs/screenshots/           # Current visual state of all 4 layouts
+docs/screenshots/           # Visual state of all layouts
 backend/app/
-  agent.py                  # Pydantic AI agent → emits UIPlan
-  plan_builder.py           # Deterministic UIPlan composer (the safety net)
-  main.py                   # FastAPI app + endpoints + SSE
-  ui_plan.py                # Pydantic models for 10 components + 4 layouts
-  prompts/system.md         # Agent system prompt v2
+  ck_agent.py               # CopilotKit FastAPI integration + /api/copilotkit/*
+  plan_builder.py           # Deterministic UIPlan composer (safety net)
+  main.py                   # FastAPI app + /demo/* endpoints + SSE
+  ui_plan.py                # Pydantic models: 13 components, 3 layouts
+  prompts/system.md         # Agent system prompt
   data/
     demo_dataset.py         # Reynolds family + 4-week NPI baseline + triggers
     language_rules.py       # Safer-language constants + state→color mapping
   mcp_tools/
     observation_parser.py   # NLP signal extraction (28 validated IDs)
-    scoring.py              # 3 peer-reviewed instruments
+    scoring.py              # 3 peer-reviewed instruments (HF/NPI/ZBI-12)
     patterns.py             # Pattern matchers w/ citations
     support.py              # Local-support lookup + talking-points draft
     __init__.py             # ALL_TOOLS list (8 tools)
 frontend/src/
-  App.tsx                   # Hero + demo trigger pills + sticky sidebar
+  App.tsx                   # Dashboard + auto-reset + auto-scroll to care plan
   components/
-    A2UIComponents.tsx      # 9 React renderers + dispatcher
-    AnchorChat.tsx          # Natural-language entry panel
-    Layouts.tsx             # 4 layout dispatchers
+    A2UIComponents.tsx      # All component renderers incl. FamilyLoadMeter,
+                            #   CarePlanCard (+ DraftMessagePanel), GenerationReceipt
+    AnchorChat.tsx          # Natural-language entry; onSent closes the drawer
+    FloatingChatDrawer.tsx  # Bottom-left pill → slide-up chat panel
+    Layouts.tsx             # 3 layout dispatchers; calm banner watches drift state
     Sparkline.tsx           # Pure-SVG mini chart
     cardHelpers.ts          # Avatars, lens icons, sparkline series
-  hooks/useAGUIStream.ts    # SSE subscription
-  types/uiPlan.ts           # TS mirror of Pydantic models
+    CopilotKitProtocolProof.tsx  # useCoAgent + useCopilotAction proof surface
+  hooks/useAGUIStream.ts    # SSE subscription → ag-ui event parsing
+  types/uiPlan.ts           # TypeScript mirror of Pydantic models
   styles/index.css          # Fraunces + Inter + JetBrains Mono
 ```
 
