@@ -41,13 +41,12 @@ dist/
 .DS_Store
 Thumbs.db
 
-# RentProof — runtime artifacts
+# Bedside — runtime artifacts
 backend/app/data/runtime/
 backend/tmp/
-*.generated.pdf
 
-# 🚨 PII / sensitive data — NEVER commit real letters/leases/photos
-# Only commit demo data clearly labeled as Rita Sharma's mock case
+# 🚨 PII / sensitive data — NEVER commit real medical / personal data
+# Only commit clearly-labelled mock data (Reynolds family demo)
 backend/app/data/real/
 *_real.pdf
 *_real.jpg

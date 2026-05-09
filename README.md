@@ -1,78 +1,109 @@
 # 🛏️ Bedside
 
-> **The intelligent layer that was always missing.** Three lenses, one app — the patient's body, the patient's mind, and the caregiver's breaking point. You text it what you noticed. The dashboard rebuilds itself when something needs your attention.
+> The intelligent layer that was always missing.
+> Three lenses, one app — the patient's body, the patient's mind, and the caregiver's breaking point.
 
-Built for the **Generative UI Hackathon** (A2UI + AG-UI + MCP Apps), Saturday 2026-05-09, San Francisco.
+Bedside is a **generative-UI** application built for the *Generative UI Global Hackathon* (May 9, 2026 — San Francisco). The agent reads casual observations from family caregivers, runs three peer-reviewed clinical instruments under the hood, and **rebuilds the dashboard in real time** when something needs attention. There is no static layout. Every render is composed by the agent for the moment it's in.
 
----
+## Why this is generative UI (not a chatbot)
 
-## What is this?
-
-63 million Americans are family caregivers. Most are doing complex care at home with zero training, a WhatsApp group, and a 9-page discharge PDF. Bedside is an AI that sits at the bedside when you can't.
-
-You text it casual observations — *"Tom's ankles look swollen and he skipped dinner again"* — and it:
-- Remembers everything across days
-- Watches three people through three lenses simultaneously (body / mind / caregiver)
-- Detects patterns across multi-day signals + multi-observer notes that no single human can track alone
-- **Rebuilds the dashboard from scratch when a pattern crosses a threshold**
-
-> **Not a medical device.** Bedside surfaces patterns from what you tell it, so you can share them with your healthcare team. Always consult a qualified clinician for medical decisions.
-
-The killer A2UI moment: when all three lenses cross threshold simultaneously, the agent constructs a **CombinedTriageView** — a layout that has never appeared before in this family's app, because this exact combination has never occurred.
-
----
-
-## Tech Stack
-
-| Layer | Tech |
+| Moment | What the agent renders |
 |---|---|
-| Backend | FastAPI (Python 3.11+, uv) |
+| Calm baseline | Three quiet `DriftScoreCard`s, all green |
+| Tom's edema + missed med trips the HF Symptom Framework | Single-alert layout with a `PatternAlertCard` (cited PMC9070923) + `TalkingPointsCard` for his cardiologist |
+| Helen's family quietly logs 4 cognitive incidents in one week | RED `ContributorMap` with a 4-week NPI baseline overlay |
+| Sarah types *"I don't know how much longer I can do this"* | Dual-risk split-pane with `BurnoutCard` + `RespiteOptionsCard` + `ApprovalPrompt` to draft a message to her brother |
+| All three at once | `CombinedTriageView` — agent picks the row order based on urgency |
+
+A chatbot can't do this. A pre-built dashboard can't do this. This is the point.
+
+## Stack
+
+| Layer | Choice |
+|---|---|
 | Agent | Pydantic AI |
-| LLM | Claude Sonnet (via Walmart Element) |
-| MCP | mcp-use (Python SDK) — 8 tools |
-| AG-UI | CopilotKit React SDK + Pydantic AI adapter |
-| A2UI | Custom 9-component kit + 4 layouts + dev-mode UIPlanInspector |
-| Frontend | React 18 + Vite + TypeScript + Tailwind 3 (pnpm) |
+| LLM | Gemini 2.5 Flash (free tier via Google AI Studio) |
+| Protocols | A2UI (UI Plan JSON) · AG-UI (event stream) · MCP (8 tools) · CopilotKit (frontend adapter) |
+| Backend | FastAPI · uv · Python 3.11 |
+| Frontend | React 18 · Vite · Tailwind · TypeScript |
+| Scoring | Three peer-reviewed instruments (HF Framework PMC9070923 / NPI Cummings et al. / ZBI-12 PMC6497029) |
 
----
-
-## Quick Start (local dev)
+## Quick start
 
 ### Backend
+
 ```bash
 cd backend
 uv venv
 source .venv/bin/activate
-uv pip install -e . --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple --allow-insecure-host pypi.ci.artifacts.walmart.com
-cp .env.example .env  # then fill in API keys
+uv pip install -e .
+echo "GOOGLE_API_KEY=your-gemini-key-here" > .env
 uv run uvicorn app.main:app --reload --port 8000
-# open http://localhost:8000/health
 ```
+
+Visit <http://localhost:8000/health> to confirm it's alive, <http://localhost:8000/docs> for the API.
+
+Get a free Gemini API key at <https://aistudio.google.com/app/apikey>.
 
 ### Frontend
+
 ```bash
 cd frontend
-pnpm install
-pnpm dev
-# open http://localhost:5173
+npm install
+npm run dev
 ```
 
----
+Visit <http://localhost:5173>.
 
-## Project Layout
+## Demo flow (2 min 30 sec)
+
+```bash
+# 1. Reset to clean baseline
+curl -X POST http://localhost:8000/demo/reset
+
+# 2. Trip Tom's heart-failure pattern
+curl -X POST http://localhost:8000/demo/uc1
+
+# 3. Trip Helen's cognitive-acceleration pattern (4 observers)
+curl -X POST http://localhost:8000/demo/uc2
+
+# 4. Trip Sarah's caregiver-burnout pattern (Z10 override)
+curl -X POST http://localhost:8000/demo/uc3
+```
+
+Each call returns a fresh `UIPlan` JSON. The frontend subscribes via SSE and re-renders the dashboard live.
+
+## Repository layout
 
 ```
-bedside/
-├── backend/        FastAPI + Pydantic AI agent + 8 MCP tools
-├── frontend/       React + Vite + A2UI component kit + AG-UI panel
-├── archive/        Earlier directions (RentProof) — reference only
-└── *.md            BEDSIDE_SPEC, START_HERE, IDEA_GRAVEYARD, AVI_RAMPUP
+backend/
+  app/
+    agent.py              # Pydantic AI agent → emits UIPlan
+    main.py               # FastAPI app + demo trigger endpoints
+    ui_plan.py            # Pydantic models for the 10 components + 4 layouts
+    data/
+      demo_dataset.py     # Reynolds family + 4-week NPI baseline + triggers
+      language_rules.py   # Safer-language constants + state→color mapping
+    mcp_tools/
+      observation_parser.py   # NLP signal extraction (28 validated IDs)
+      scoring.py              # 3 peer-reviewed instruments
+      patterns.py             # Pattern matchers w/ citations
+      support.py              # Local-support lookup + talking-points draft
+    prompts/system.md     # Agent system prompt v2
+frontend/
+  src/
+    App.tsx               # Shell + dashboard mount
+    components/           # 10 A2UI components
+    layouts/              # 4 layouts the agent picks from
+    types/uiPlan.ts       # TS mirror of the Pydantic models
+BEDSIDE_SPEC.md           # Single source of truth (read this first)
+SUBMISSION.md             # Hackathon submission packet
 ```
 
-Full spec in `BEDSIDE_SPEC.md`. Onboarding in `START_HERE.md`.
+## Safer-language commitment
 
----
+Bedside is **not** a medical device. It surfaces patterns from observations its users record, with citations to the published instruments it uses, so users can have better conversations with their healthcare team. The agent prompt enforces a strict no-clinical-claim banned-phrase list (see `backend/app/data/language_rules.py`) and every alert card carries a verbatim disclaimer.
 
 ## License
 
-MIT — see `LICENSE`.
+MIT (TBD — finalised at submission).

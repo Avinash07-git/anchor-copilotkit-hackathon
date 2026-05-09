@@ -189,6 +189,12 @@ class DualRiskSlots(BaseModel):
 
 
 class UIPlanMeta(BaseModel):
+    """Loose meta-bag — extra keys allowed so the agent / orchestrator can
+    stash debugging data (e.g. ``fallback_reason``) without a schema bump.
+    """
+
+    model_config = {"extra": "allow"}
+
     family_id: str = "reynolds"
     plan_version: int = 1  # increments on each agent re-emit; UIPlanInspector uses this
     triggered_by: str | None = None  # e.g. "uc1" / "uc3" / "combined"

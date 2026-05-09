@@ -1,13 +1,14 @@
-// Bedside UI Plan types — mirrors backend/app/ui_plan.py exactly.
+// Bedside UI Plan types — mirrors backend/app/ui_plan.py.
 //
 // The agent emits a UIPlan as JSON; the React renderer interprets it and
-// mounts the right A2UI components inside the chosen layout. See
-// BEDSIDE_SPEC.md §6 + §7. Keep this file in sync with the Python models —
-// the FastAPI layer validates outgoing plans against Pydantic, but the
-// React renderer trusts these types.
+// mounts the right A2UI components inside the chosen layout. Keep this
+// file in sync with the Python models — the FastAPI layer validates
+// outgoing plans against Pydantic, but the React renderer trusts these
+// types.
 
 export type Lens = 'body' | 'mind' | 'caregiver';
 export type Color = 'green' | 'yellow' | 'amber' | 'red' | 'gray';
+export type State = 'green' | 'yellow' | 'amber' | 'red';
 export type LayoutKind =
   | 'calm_dashboard'
   | 'single_alert'
@@ -24,11 +25,14 @@ export interface DriftScoreCardProps {
   age: number;
   lens: Lens;
   lens_label: string;
-  score: number; // 0-100
+  score: number;
   color: Color;
   trend: 'up' | 'down' | 'flat';
   one_liner: string;
-  last_updated: string; // ISO datetime
+  last_updated: string;
+  state: State;
+  raw_score_label: string;
+  instrument: string;
 }
 
 export interface SignalEntry {
@@ -46,6 +50,10 @@ export interface PatternAlertCardProps {
   signals: SignalEntry[];
   suggested_actions: string[];
   disclaimer: string;
+  citation: string;
+  raw_score_label: string;
+  rebuild_reason: string;
+  instrument: string;
 }
 
 export interface ContributorEntry {
@@ -118,7 +126,7 @@ export interface TriageRow {
 export interface CombinedTriageViewProps {
   title: string;
   rationale: string;
-  rows: TriageRow[]; // ordered by agent's chosen priority
+  rows: TriageRow[];
   disclaimer: string;
 }
 
@@ -135,17 +143,16 @@ export type ComponentType =
   | 'ApprovalPrompt'
   | 'CombinedTriageView';
 
-export interface Component {
+export interface PlanComponent {
   type: ComponentType;
-  // The renderer narrows props by component type at the switch site.
   props: Record<string, unknown>;
 }
 
 // --- Layout slots (only for dual_risk) -----------------------------------
 
 export interface DualRiskSlots {
-  left_panel: Component[];
-  right_panel: Component[];
+  left_panel: PlanComponent[];
+  right_panel: PlanComponent[];
 }
 
 // --- Top-level UIPlan -----------------------------------------------------
@@ -155,11 +162,44 @@ export interface UIPlanMeta {
   plan_version: number;
   triggered_by: string | null;
   last_updated: string;
+  fallback_reason?: string;
 }
 
 export interface UIPlan {
   layout: LayoutKind;
-  components: Component[];
-  slots?: DualRiskSlots; // only present when layout === 'dual_risk'
+  components: PlanComponent[];
+  slots?: DualRiskSlots;
   meta: UIPlanMeta;
 }
+
+// --- Helpers --------------------------------------------------------------
+
+export const colorToBadge = (c: Color): string => {
+  switch (c) {
+    case 'green':  return 'bg-bedside-green-10 text-bedside-green-100 border-bedside-green-100';
+    case 'yellow': return 'bg-bedside-spark-10 text-bedside-spark-140 border-bedside-spark-140';
+    case 'amber':  return 'bg-bedside-amber-10 text-bedside-amber-100 border-bedside-amber-100';
+    case 'red':    return 'bg-bedside-red-10 text-bedside-red-100 border-bedside-red-100';
+    default:       return 'bg-bedside-gray-10 text-bedside-gray-100 border-bedside-gray-50';
+  }
+};
+
+export const colorIcon = (c: Color): string => {
+  switch (c) {
+    case 'green':  return '🟢';
+    case 'yellow': return '🟡';
+    case 'amber':  return '🟠';
+    case 'red':    return '🔴';
+    default:       return '⚪';
+  }
+};
+
+export const colorLabel = (c: Color): string => {
+  switch (c) {
+    case 'green':  return 'Calm';
+    case 'yellow': return 'Watch';
+    case 'amber':  return 'Raise';
+    case 'red':    return 'Act';
+    default:       return 'Tracking';
+  }
+};

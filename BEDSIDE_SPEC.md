@@ -279,7 +279,7 @@ This is what protects us from the medical-liability concern. Every user-facing s
 | 7 | React renderer for 10 components + 4 layout wrappers | 2.5h |
 | 8 | AG-UI streaming wired (CopilotKit adapter) — judges see live thinking | 1h |
 | 9 | UIPlanInspector debug panel (collapsible JSON viewer) | 30m |
-| 10 | Walmart palette + WCAG AA pass on every component | 1h |
+| 10 | Polish pass: bedside palette + WCAG AA contrast on every component | 1h |
 | 11 | Pitch script + 5 dry runs + record backup video | 1h |
 | | **🚨 GO/NO-GO checkpoint by Sat 1pm: end-to-end demo runs cleanly 3× in a row** | |
 
