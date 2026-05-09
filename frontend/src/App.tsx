@@ -1,23 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useAGUIStream } from './hooks/useAGUIStream';
 import { renderLayout } from './components/Layouts';
-import AnchorChat from './components/AnchorChat';
+import FloatingChatDrawer from './components/FloatingChatDrawer';
 
 /**
  * Anchor — App shell.
  *
- * Single-page dashboard that subscribes to the agent's UIPlan stream over
- * SSE and re-renders whenever a new plan arrives. The trigger pills are
- * the offline-safe hero CTA; the chat panel is the natural-language path.
+ * Single-page dashboard. The dashboard takes the FULL page width (no
+ * sidebar) so each person's wellbeing row gets a wide breathing chart.
+ * Chat lives in a floating drawer (bottom-right) and reasoning lives in
+ * a thin collapsed bar at the bottom — both available, neither competing
+ * with the dashboard for attention.
  *
- * Pass ?dev=1 in the URL to surface the layout/version pills (off by default
- * so end users don't see plumbing).
+ * Pass ?dev=1 in the URL to surface the layout/version pills.
  */
 const TRIGGERS: Array<{ id: string; label: string; sub: string; tone: 'safe' | 'warn' | 'reset' }> = [
-  { id: 'reset', label: 'Reset',                sub: 'Calm baseline',         tone: 'reset' },
-  { id: 'uc1',   label: 'Tom · slow slide',     sub: 'Body · HF pattern',     tone: 'warn' },
-  { id: 'uc2',   label: 'Helen · silent decline', sub: 'Mind · NPI drift',    tone: 'warn' },
-  { id: 'uc3',   label: 'Sarah · breaking point', sub: 'Caregiver · ZBI override', tone: 'warn' },
+  { id: 'reset', label: 'Reset',                   sub: 'Calm baseline',            tone: 'reset' },
+  { id: 'uc1',   label: 'Tom · slow slide',        sub: 'Body · HF pattern',        tone: 'warn' },
+  { id: 'uc2',   label: 'Helen · silent decline',  sub: 'Mind · NPI drift',         tone: 'warn' },
+  { id: 'uc3',   label: 'Sarah · breaking point',  sub: 'Caregiver · ZBI override', tone: 'warn' },
 ];
 
 const isDev = () =>
@@ -29,7 +30,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeTrigger, setActiveTrigger] = useState<string | null>(null);
 
-  // First fetch in case SSE plan_updated hasn't arrived yet (cold load)
+  // Cold-load fallback in case SSE plan_updated hasn't arrived yet
   const [bootPlan, setBootPlan] = useState<typeof plan>(null);
   useEffect(() => {
     if (plan || bootPlan) return;
@@ -50,7 +51,7 @@ export default function App() {
       const path = triggerId === 'reset' ? '/demo/reset' : `/demo/${triggerId}`;
       const res = await fetch(path, { method: 'POST' });
       if (!res.ok) throw new Error(`Trigger ${triggerId} failed: HTTP ${res.status}`);
-      await res.json(); // new plan arrives via SSE plan_updated
+      await res.json();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -59,8 +60,8 @@ export default function App() {
   };
 
   return (
-    <main className="min-h-screen bg-cream-gradient text-anchor-ink-600">
-      {/* Hero — Anchor identity + status */}
+    <main className="min-h-screen bg-cream-gradient text-anchor-ink-600 pb-32">
+      {/* Hero */}
       <header className="relative overflow-hidden border-b border-anchor-mist-100">
         <div
           className="absolute inset-0 opacity-[0.06] pointer-events-none"
@@ -70,7 +71,7 @@ export default function App() {
           }}
           aria-hidden
         />
-        <div className="relative max-w-7xl mx-auto px-6 sm:px-8 pt-9 pb-7">
+        <div className="relative max-w-6xl mx-auto px-6 sm:px-8 pt-9 pb-7">
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div className="flex items-center gap-3.5">
               <AnchorMark />
@@ -101,9 +102,9 @@ export default function App() {
         </div>
       </header>
 
-      {/* Demo trigger row — the actual hero CTA, prominent */}
+      {/* Demo trigger row */}
       <section className="bg-white/60 border-b border-anchor-mist-100 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 py-5">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-[10px] uppercase tracking-[0.16em] text-anchor-indigo-600 font-bold">
@@ -142,45 +143,42 @@ export default function App() {
         </div>
       </section>
 
-      {/* Main */}
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-        {/* Dashboard column */}
-        <section>
-          {error && (
-            <div className="mb-4 rounded-2xl bg-red-50 border border-state-red/30 p-4 text-sm text-state-red">
-              ⚠ {error}
-            </div>
-          )}
-          {livePlan ? (
-            <div className="animate-[fadeIn_.4s_ease-out]" key={livePlan.meta?.plan_version ?? 'v0'}>
-              {renderLayout(livePlan)}
-            </div>
-          ) : (
-            <EmptyState />
-          )}
+      {/* Dashboard — FULL WIDTH */}
+      <section className="max-w-6xl mx-auto px-6 sm:px-8 py-8">
+        {error && (
+          <div className="mb-4 rounded-2xl bg-red-50 border border-state-red/30 p-4 text-sm text-state-red">
+            ⚠ {error}
+          </div>
+        )}
+        {livePlan ? (
+          <div className="animate-[fadeIn_.4s_ease-out]" key={livePlan.meta?.plan_version ?? 'v0'}>
+            {renderLayout(livePlan)}
+          </div>
+        ) : (
+          <EmptyState />
+        )}
 
-          {dev && livePlan?.meta?.fallback_reason && (
-            <p className="mt-6 text-xs italic text-anchor-mist-400">
-              ⚠ Agent fell back to deterministic mode: {livePlan.meta.fallback_reason}
-            </p>
-          )}
-        </section>
+        {dev && livePlan?.meta?.fallback_reason && (
+          <p className="mt-6 text-xs italic text-anchor-mist-400">
+            ⚠ Agent fell back to deterministic mode: {livePlan.meta.fallback_reason}
+          </p>
+        )}
+      </section>
 
-        {/* Sidebar */}
-        <aside className="lg:sticky lg:top-6 lg:self-start space-y-5">
-          <AnchorChat />
-          <ReasoningPanel steps={steps} />
-        </aside>
-      </div>
-
-      {/* Page-level disclaimer (single source) */}
-      <footer className="max-w-7xl mx-auto px-6 sm:px-8 pb-10">
+      {/* Footer disclaimer */}
+      <footer className="max-w-6xl mx-auto px-6 sm:px-8 pb-10">
         <p className="text-[11px] text-anchor-mist-400 italic leading-relaxed text-center max-w-2xl mx-auto">
           Anchor is not a medical device. It surfaces patterns from what you tell it,
           so you can share them with your healthcare team. Always consult a qualified
           clinician for medical decisions.
         </p>
       </footer>
+
+      {/* Reasoning ribbon — fixed thin bar above the chat pill */}
+      <ReasoningRibbon steps={steps} />
+
+      {/* Floating chat drawer */}
+      <FloatingChatDrawer />
 
       <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }`}</style>
     </main>
@@ -234,38 +232,37 @@ function EmptyState() {
   );
 }
 
-function ReasoningPanel({ steps }: { steps: Array<{ id: number; text: string }> }) {
+function ReasoningRibbon({ steps }: { steps: Array<{ id: number; text: string }> }) {
+  const [open, setOpen] = useState(false);
+  if (steps.length === 0) return null;
   return (
-    <details className="rounded-2xl border border-anchor-mist-100 bg-white shadow-soft group" open={steps.length > 0}>
-      <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2.5 select-none">
-        <span className="w-7 h-7 rounded-lg bg-anchor-indigo-600/10 grid place-items-center text-anchor-indigo-700" aria-hidden>
-          ◉
-        </span>
-        <div className="flex-1">
-          <h2 className="text-[13px] font-semibold text-anchor-ink-900 leading-tight">
-            Agent reasoning
-          </h2>
-          <p className="text-[11px] text-anchor-mist-400 leading-tight mt-0.5">
-            {steps.length === 0 ? 'Waiting for activity…' : `${steps.length} step${steps.length === 1 ? '' : 's'} streamed`}
-          </p>
-        </div>
-        <span className="text-anchor-mist-400 text-xs transition-transform group-open:rotate-90" aria-hidden>▸</span>
-      </summary>
-      <ol className="px-4 pb-4 space-y-1.5 max-h-[36vh] overflow-y-auto">
-        {steps.length === 0 && (
-          <li className="text-[11px] italic text-anchor-mist-400">
-            Pick a scenario above or type in chat — Anchor will narrate what it does.
-          </li>
-        )}
-        {steps.map((s) => (
-          <li
-            key={s.id}
-            className="text-[11px] font-mono bg-anchor-cream-100 rounded-lg px-2.5 py-1.5 leading-snug text-anchor-ink-600 border border-anchor-mist-100/60"
+    <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 pb-2">
+        <div className="pointer-events-auto inline-block">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-anchor-mist-100 shadow-soft text-[11px] text-anchor-mist-400 hover:text-anchor-ink-600 focus:outline-none focus:ring-2 focus:ring-anchor-indigo-200"
           >
-            <span className="text-anchor-indigo-600">›</span> {s.text}
-          </li>
-        ))}
-      </ol>
-    </details>
+            <span className="w-1.5 h-1.5 rounded-full bg-anchor-indigo-600 animate-pulse" aria-hidden />
+            <span className="font-semibold">Agent reasoning</span>
+            <span className="font-mono">{steps.length}</span>
+            <span aria-hidden className={`transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+          </button>
+          {open && (
+            <ol className="pointer-events-auto mt-2 max-w-xl bg-white border border-anchor-mist-100 rounded-2xl shadow-lift p-3 space-y-1.5 max-h-[40vh] overflow-y-auto">
+              {steps.slice(-30).map((s) => (
+                <li
+                  key={s.id}
+                  className="text-[11px] font-mono bg-anchor-cream-100 rounded-lg px-2.5 py-1.5 leading-snug text-anchor-ink-600"
+                >
+                  <span className="text-anchor-indigo-600">›</span> {s.text}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -12,9 +12,22 @@ interface SparklineProps {
   fill: string;
   height?: number;
   ariaLabel?: string;
+  /**
+   * Minimum vertical range to display. Without this, a near-flat series gets
+   * auto-scaled to fill the chart and looks frantic. With it, small wobbles
+   * stay visually small — calm reads as calm.
+   */
+  minRange?: number;
 }
 
-export function Sparkline({ data, stroke, fill, height = 56, ariaLabel }: SparklineProps) {
+export function Sparkline({
+  data,
+  stroke,
+  fill,
+  height = 56,
+  ariaLabel,
+  minRange = 25,
+}: SparklineProps) {
   if (!data || data.length < 2) return null;
 
   const W = 200;
@@ -22,9 +35,20 @@ export function Sparkline({ data, stroke, fill, height = 56, ariaLabel }: Sparkl
   const PAD_X = 3;
   const PAD_Y = 6;
 
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = Math.max(1, max - min);
+  const dataMin = Math.min(...data);
+  const dataMax = Math.max(...data);
+  const dataRange = dataMax - dataMin;
+
+  // Enforce a minimum visual range. Center the existing data inside it so the
+  // line sits where the values 'live' rather than collapsing to an edge.
+  let min = dataMin;
+  let max = dataMax;
+  if (dataRange < minRange) {
+    const mid = (dataMin + dataMax) / 2;
+    min = mid - minRange / 2;
+    max = mid + minRange / 2;
+  }
+  const range = Math.max(0.0001, max - min);
 
   const points = data.map((v, i) => {
     const x = PAD_X + (i / (data.length - 1)) * (W - PAD_X * 2);

@@ -138,23 +138,22 @@ export function deriveSparkline(
   days = 14,
 ): number[] {
   const seed = personId.charCodeAt(0) + personId.length * 7;
-  // Tiny wobble for organic feel; smaller on calm so the line reads peaceful.
-  const wobbleAmp = state === 'green' ? 0.4 : 1.2;
+  // Calm states get a subtle but visible wobble so the line reads as a
+  // gentle living trace, not a dead horizontal stripe.
+  const wobbleAmp = state === 'green' ? 0.8 : 1.6;
   const wobble = (i: number) =>
     (Math.sin(seed + i * 1.7) + Math.cos(seed * 0.5 + i)) * 0.5 * wobbleAmp;
 
-  // For calm: hover the curve right around the headline score so the line
-  // is a near-flat ribbon (no kick-up at the end).
-  // For alert states: start near the typical baseline and decline to score.
-  const baseline = state === 'green' ? score : 96 + ((seed % 3) - 1);
+  // Calm: float around the headline score. Alert: start near a typical
+  // baseline and decline to the score.
+  const baseline = state === 'green' ? Math.min(99, score) : 96 + ((seed % 3) - 1);
   const endValue = score;
 
-  // Earlier bend for more severe states (longer descent).
   const bendStart =
     state === 'red'    ? 0.5 :
     state === 'amber'  ? 0.4 :
     state === 'yellow' ? 0.6 :
-    /* green */          1.1; // never bends
+    /* green */          1.1;
 
   const out: number[] = [];
   for (let i = 0; i < days; i++) {
@@ -164,12 +163,13 @@ export function deriveSparkline(
       v = baseline + wobble(i);
     } else {
       const localT = (t - bendStart) / Math.max(0.0001, 1 - bendStart);
-      const eased = localT * localT * (3 - 2 * localT); // smoothstep
+      const eased = localT * localT * (3 - 2 * localT);
       v = baseline + (endValue - baseline) * eased + wobble(i) * 0.4;
     }
-    out.push(Math.max(0, Math.min(100, Math.round(v))));
+    // Don't round — fractional values let small wobbles render visibly.
+    out.push(Math.max(0, Math.min(100, Number(v.toFixed(2)))));
   }
-  out[out.length - 1] = score; // anchor today exactly to the headline
+  out[out.length - 1] = score;
   return out;
 }
 

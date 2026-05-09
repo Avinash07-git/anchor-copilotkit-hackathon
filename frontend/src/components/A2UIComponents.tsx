@@ -83,6 +83,18 @@ const SignalChips = ({ raw }: { raw: string }) => {
 };
 
 // --- DriftScoreCard ------------------------------------------------------
+// Horizontal row layout: avatar + identity (left), big score (center),
+// wide breathing sparkline (right). Stacked vertically by the layout, this
+// gives each person a full-width band instead of a cramped column.
+
+const captionTone = (color: string): string => {
+  switch (color) {
+    case 'red':    return 'text-state-red';
+    case 'amber':  return 'text-state-amber';
+    case 'yellow': return 'text-state-yellow';
+    default:       return 'text-anchor-mist-400';
+  }
+};
 
 export const DriftScoreCard = (p: DriftScoreCardProps) => {
   const accent = personAccent(p.person_id);
@@ -93,78 +105,85 @@ export const DriftScoreCard = (p: DriftScoreCardProps) => {
   const caption = friendlyStateCaption(p.color);
   return (
     <section
-      className={`group relative rounded-2xl border bg-white p-6 transition-all hover:shadow-lift ${cardChrome(p.color)}`}
+      className={`group relative rounded-2xl border bg-white p-5 sm:p-6 transition-all hover:shadow-lift ${cardChrome(p.color)}`}
     >
-      {/* Header: avatar + name + state badge */}
-      <div className="flex items-start gap-3 mb-5">
-        <div
-          className={`relative w-12 h-12 rounded-full grid place-items-center font-semibold text-sm ring-4 ${accent.ring} ${accent.bg} ${accent.fg} flex-shrink-0`}
-          aria-hidden
-        >
-          {initialsFor(p.display_name)}
-          <span
-            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white grid place-items-center text-[11px] shadow-sm border border-anchor-mist-100"
-            title={p.lens_label}
+      <div className="flex flex-col md:flex-row md:items-center gap-5 md:gap-7">
+        {/* Identity column */}
+        <div className="flex items-center gap-4 md:w-[220px] md:flex-shrink-0">
+          <div
+            className={`relative w-14 h-14 rounded-full grid place-items-center font-semibold text-base ring-4 ${accent.ring} ${accent.bg} ${accent.fg} flex-shrink-0`}
+            aria-hidden
           >
-            {lensIcon(p.lens)}
-          </span>
+            {initialsFor(p.display_name)}
+            <span
+              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white grid place-items-center text-[11px] shadow-sm border border-anchor-mist-100"
+              title={p.lens_label}
+            >
+              {lensIcon(p.lens)}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-[18px] font-semibold text-anchor-ink-900 leading-tight">
+              {p.display_name.split(' ')[0]}
+              <span className="text-anchor-mist-400 font-normal text-sm ml-1.5">· {p.age}</span>
+            </h3>
+            <p className="text-[10px] text-anchor-mist-400 uppercase tracking-[0.12em] font-semibold mt-1">
+              {p.lens_label.replace(/\s*wellbeing$/i, '')}
+            </p>
+          </div>
         </div>
+
+        {/* Score column */}
+        <div className="flex flex-col md:w-[180px] md:flex-shrink-0 md:border-l md:border-anchor-mist-100/70 md:pl-7">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display text-[48px] md:text-[56px] font-semibold tabular-nums text-anchor-ink-900 leading-none tracking-tight">
+              {p.score}
+            </span>
+            <span className="text-anchor-mist-400 text-xs font-mono">/ 100</span>
+            {p.trend !== 'flat' && (
+              <span
+                className={`ml-1 inline-flex items-center text-[16px] ${arrow.cls}`}
+                aria-label={arrow.label}
+                title={arrow.label}
+              >
+                {arrow.glyph}
+              </span>
+            )}
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colorToBadge(p.color)}`}
+            >
+              <span aria-hidden className="text-[8px]">{colorIcon(p.color)}</span>
+              {colorLabel(p.color)}
+            </span>
+            {caption && (
+              <span className={`text-[11px] font-medium ${captionTone(p.color)}`}>
+                {caption}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Trend chart column — takes the rest of the width */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-[16px] font-semibold text-anchor-ink-900 leading-tight truncate">
-            {p.display_name.split(' ')[0]}
-            <span className="text-anchor-mist-400 font-normal text-xs ml-1.5">· {p.age}</span>
-          </h3>
-          <p className="text-[10px] text-anchor-mist-400 uppercase tracking-[0.1em] font-semibold mt-1">
-            {p.lens_label.replace(/\s*wellbeing$/i, '')}
-          </p>
-        </div>
-        <span
-          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex-shrink-0 ${colorToBadge(p.color)}`}
-        >
-          <span aria-hidden className="text-[8px]">{colorIcon(p.color)}</span>
-          {colorLabel(p.color)}
-        </span>
-      </div>
-
-      {/* Big score + caption (caption only when not calm) */}
-      <div className="flex items-baseline gap-1.5">
-        <span className="font-display text-[56px] font-semibold tabular-nums text-anchor-ink-900 leading-none tracking-tight">
-          {p.score}
-        </span>
-        <span className="text-anchor-mist-400 text-xs font-mono">/ 100</span>
-        {p.trend !== 'flat' && (
-          <span
-            className={`ml-auto inline-flex items-center text-[14px] ${arrow.cls}`}
-            aria-label={arrow.label}
-            title={arrow.label}
-          >
-            {arrow.glyph}
-          </span>
-        )}
-      </div>
-      {caption && (
-        <p className={`mt-1.5 text-[12px] font-medium ${
-          p.color === 'red' ? 'text-state-red' :
-          p.color === 'amber' ? 'text-state-amber' :
-          p.color === 'yellow' ? 'text-state-yellow' :
-          'text-anchor-mist-400'
-        }`}>
-          {caption}
-        </p>
-      )}
-
-      {/* Sparkline */}
-      <div className="mt-4">
-        <Sparkline
-          data={series}
-          stroke={stroke}
-          fill={fill}
-          height={52}
-          ariaLabel={`${p.display_name} 14-day wellbeing trend, currently ${p.score} out of 100`}
-        />
-        <div className="flex items-center justify-between text-[10px] text-anchor-mist-400 mt-1">
-          <span>14 days ago</span>
-          <span className="font-medium text-anchor-ink-100">today</span>
+          <div className="flex items-baseline justify-between mb-1.5">
+            <p className="text-[10px] text-anchor-mist-400 uppercase tracking-[0.12em] font-semibold">
+              Last 14 days
+            </p>
+            <p className="text-[10px] text-anchor-mist-400">
+              <span>14 days ago</span>
+              <span className="mx-2 text-anchor-mist-100">—</span>
+              <span className="font-medium text-anchor-ink-100">today</span>
+            </p>
+          </div>
+          <Sparkline
+            data={series}
+            stroke={stroke}
+            fill={fill}
+            height={88}
+            ariaLabel={`${p.display_name} 14-day wellbeing trend, currently ${p.score} out of 100`}
+          />
         </div>
       </div>
     </section>
