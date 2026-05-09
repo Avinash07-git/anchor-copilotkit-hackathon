@@ -124,6 +124,9 @@ _KEYWORDS: dict[Signal, list[str]] = {
         "didn't sleep",
         "up worrying",
         "haven't slept",
+        "haven't been sleeping",
+        "barely slept",
+        "trouble sleeping",
     ],
     "Z2_emotional_exhaustion": [
         "drained",
@@ -145,6 +148,10 @@ _KEYWORDS: dict[Signal, list[str]] = {
         "by myself",
         "friends have stopped",
         "haven't seen anyone",
+        "haven't seen my friends",
+        "feel completely alone",
+        "feel so alone",
+        "no one to talk to",
     ],
     "Z8_health_neglect": [
         "haven't eaten",

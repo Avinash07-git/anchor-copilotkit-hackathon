@@ -133,9 +133,17 @@ def score_physical_drift(person_id: str = "tom", today: int = 11) -> ScoreResult
         reasons.append(f"Score {raw}/24 crossed into {state.upper()} band")
     rebuild_reason = "; ".join(reasons) if reasons else None
 
-    # Map raw → wellbeing-score intensity within the state's band.
-    # Tom: max-band raw is 24, scale linearly.
-    intensity = min(1.0, raw / 24.0 * 1.6)  # 1.6 keeps the gradient visible
+    # Map raw → within-band intensity. 0 = just entered this band (better
+    # edge); 1 = at the extreme of the band. Keeps the score gradient alive
+    # so two amber-state people don't both render as the same number.
+    if state == 'red':
+        intensity = min(1.0, max(0.0, (raw - 15) / 9.0))
+    elif state == 'amber':
+        intensity = min(1.0, max(0.0, (raw - 10) / 4.0))
+    elif state == 'yellow':
+        intensity = min(1.0, max(0.0, (raw - 5) / 4.0))
+    else:
+        intensity = min(1.0, max(0.0, raw / 4.0))
     wellbeing = state_to_wellbeing_score(state, intensity)
 
     active = [
@@ -248,12 +256,18 @@ def score_cognitive_drift(person_id: str = "helen", today: int = 6) -> ScoreResu
     else:
         baseline_avg = 0.0
 
-    # Drift rate
-    if baseline_avg > 0:
-        drift_pct = round((this_week_score - baseline_avg) / baseline_avg * 100, 1)
-    elif this_week_score > 0:
-        # No prior baseline but signal this week → treat as significant.
-        drift_pct = 100.0
+    # Drift rate — with a baseline floor so a near-zero baseline doesn't
+    # explode into 1000% drift on the first new observation. The floor (6)
+    # represents the noise level: roughly one mild signal per week is normal
+    # everyday forgetfulness for an 84-year-old, and the math should treat
+    # that as 'no real drift'. Higher floors give a smoother gradient as
+    # signals accumulate, which matches how real caregivers experience drift
+    # — a slow rise, not a cliff.
+    BASELINE_FLOOR = 6.0
+    effective_baseline = max(baseline_avg, BASELINE_FLOOR)
+    if this_week_score > 0 or baseline_avg > 0:
+        drift_pct = round((this_week_score - effective_baseline) / effective_baseline * 100, 1)
+        drift_pct = max(0.0, drift_pct)  # negative drift = improving = also calm
     else:
         drift_pct = 0.0
 
@@ -268,8 +282,16 @@ def score_cognitive_drift(person_id: str = "helen", today: int = 6) -> ScoreResu
         else None
     )
 
-    # Map raw → wellbeing-score intensity. Use drift_pct (capped at 100%).
-    intensity = min(1.0, max(0.0, drift_pct / 100.0))
+    # Within-band intensity — see physical scoring for the same pattern.
+    # NPI bands: green <15, yellow 15-30, amber 30-50, red >50 (drift %).
+    if state == 'red':
+        intensity = min(1.0, max(0.0, (drift_pct - 50) / 100.0))   # 50%→0, 150%→1
+    elif state == 'amber':
+        intensity = min(1.0, max(0.0, (drift_pct - 30) / 20.0))    # 30→0, 50→1
+    elif state == 'yellow':
+        intensity = min(1.0, max(0.0, (drift_pct - 15) / 15.0))    # 15→0, 30→1
+    else:
+        intensity = min(1.0, max(0.0, drift_pct / 15.0))           # 0→0, 15→1
     wellbeing = state_to_wellbeing_score(state, intensity)
 
     active = [
@@ -393,7 +415,16 @@ def score_caregiver_burden(person_id: str = "sarah", today: int = 14) -> ScoreRe
     else:
         rebuild_reason = None
 
-    intensity = min(1.0, normalised / 100.0)
+    # Within-band intensity — ZBI bands: green <25, yellow 25-45, amber 46-68,
+    # red 69+ (normalised /100).
+    if state == 'red':
+        intensity = min(1.0, max(0.0, (normalised - 69) / 30.0))
+    elif state == 'amber':
+        intensity = min(1.0, max(0.0, (normalised - 46) / 22.0))
+    elif state == 'yellow':
+        intensity = min(1.0, max(0.0, (normalised - 25) / 20.0))
+    else:
+        intensity = min(1.0, max(0.0, normalised / 24.0))
     if override_applied:
         intensity = max(intensity, 0.3)  # nudge above bottom of amber band
     wellbeing = state_to_wellbeing_score(state, intensity)
@@ -436,6 +467,16 @@ def score_caregiver_burden(person_id: str = "sarah", today: int = 14) -> ScoreRe
 
 
 _TODAY_FOR_PERSON = {"tom": 11, "helen": 6, "sarah": 14}
+
+
+def today_for(person_id: str) -> int:
+    """Return the 'now' reference day for `person_id`.
+
+    Each instrument's window is anchored on this day. New observations (e.g.
+    from chat) MUST land at or after this day so they fall inside week 0 of
+    the scoring window — otherwise the score doesn't react to them.
+    """
+    return _TODAY_FOR_PERSON.get(person_id, 0)
 
 
 def update_wellbeing_score(person_id: str) -> ScoreResult:

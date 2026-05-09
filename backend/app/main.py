@@ -39,7 +39,7 @@ from app.mcp_tools.observation_parser import (
     parse_observation_log,
     reset_store,
 )
-from app.mcp_tools.scoring import update_wellbeing_score
+from app.mcp_tools.scoring import today_for, update_wellbeing_score
 from app.plan_builder import build_plan
 
 load_dotenv()
@@ -344,7 +344,10 @@ async def chat(message: ChatMessage) -> ChatReply:
             plan=_state["plan"] or build_plan(triggered_by="chat_clarify", plan_version=_state["plan_version"]),
         )
 
-    today = max((e["day"] for e in _all_days_for(person_id)), default=0) + 1
+    # Each chat observation lands on the person's reference 'today'. Multiple
+    # chats stack on the same day — that's how the score moves GRADUALLY in
+    # response to evidence rather than skipping straight from calm to alarm.
+    today = today_for(person_id)
     log_observation(person_id, message.observer, message.message, today, parsed["signals"])
     await _broadcast("agent_step", {"text": f"log_observation → {person_id} day {today}"})
 
