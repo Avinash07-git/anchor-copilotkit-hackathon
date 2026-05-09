@@ -30,6 +30,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTrigger, setActiveTrigger] = useState<string | null>(null);
+  const [forcedPlan, setForcedPlan] = useState<typeof plan>(null);
 
   // Demo-mode hygiene: reset backend to clean state once on first load so
   // refreshes never inherit stale data from a prior session. The
@@ -50,11 +51,29 @@ export default function App() {
       .catch(() => undefined);
   }, [plan, bootPlan]);
 
+  // Drawer quick examples can replay full demo scenarios. When they do,
+  // they publish the returned UIPlan here so the visible dashboard rebuilds
+  // immediately instead of waiting on the stream.
+  useEffect(() => {
+    const applyGeneratedPlan = (event: Event) => {
+      const nextPlan = (event as CustomEvent<typeof plan>).detail;
+      if (nextPlan) setForcedPlan(nextPlan);
+    };
+    window.addEventListener('anchor:plan', applyGeneratedPlan);
+    return () => window.removeEventListener('anchor:plan', applyGeneratedPlan);
+  }, []);
+
+  // If an HTTP trigger returns a plan, trust that exact plan first. This
+  // avoids a demo-day race where a late boot reset or SSE event briefly
+  // overwrites the scenario the presenter just clicked.
+  const livePlan = forcedPlan ?? plan ?? bootPlan;
+  const dev = isDev();
+
   // When the plan rebuilds and contains a CarePlanCard, scroll it into
   // view so the caregiver doesn't miss it under the fold or the chat
   // drawer. Only fires on plan_version changes — not on bootPlan idle.
-  const planVersion = (plan ?? bootPlan)?.meta?.plan_version;
-  const hasCarePlan = ((plan ?? bootPlan)?.components ?? []).some(
+  const planVersion = livePlan?.meta?.plan_version;
+  const hasCarePlan = (livePlan?.components ?? []).some(
     (c: { type: string }) => c.type === 'CarePlanCard',
   );
   const lastScrolledVersion = useRef<number | null>(null);
@@ -70,9 +89,6 @@ export default function App() {
     return () => clearTimeout(t);
   }, [planVersion, hasCarePlan]);
 
-  const livePlan = plan ?? bootPlan;
-  const dev = isDev();
-
   const fireTrigger = async (triggerId: string) => {
     setBusy(true);
     setError(null);
@@ -81,7 +97,8 @@ export default function App() {
       const path = triggerId === 'reset' ? '/demo/reset' : `/demo/${triggerId}`;
       const res = await fetch(path, { method: 'POST' });
       if (!res.ok) throw new Error(`Trigger ${triggerId} failed: HTTP ${res.status}`);
-      await res.json();
+      const nextPlan = await res.json();
+      setForcedPlan(nextPlan);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

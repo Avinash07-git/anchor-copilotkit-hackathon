@@ -89,20 +89,24 @@ Open <http://localhost:5173>.
 The app auto-resets to green on load. No manual reset needed.
 
 1. **Open "Tell Anchor"** — the indigo pill, bottom-left corner.
-2. **Click the Tom suggestion** (pre-filled):
-   *"Tom's ankles are really swollen, he barely ate anything, missed his
-   evening blood thinner, and just doesn't seem himself"*
-   — the drawer closes, dashboard rebuilds to `single_alert`, Tom goes amber.
-3. **Scroll down** — auto-scroll lands on the generated `CarePlanCard`.
-   Note the "Generated because: Tom amber" subtitle.
-4. **Click "Approve & draft"** on any step — `DraftMessagePanel` opens
-   with an editable message and 5 tone chips. Click each chip to see the
-   message regenerate inline.
-5. **Click "Helen · silent decline"** (demo shortcut row) — triggers the
-   4-observer cognitive pattern. Layout rebuilds to `combined_triage`.
-6. **Expand** the `GenerationReceipt` at the bottom — shows layout reason
+2. **Type:** `Mom asked me the same question three times today.`
+   Helen dips gently, but no care plan appears. Anchor is logging memory
+   repetition against the NPI subset.
+3. **Type:** `She asked again what day it was when I called.`
+   Helen dips again, still below the rebuild threshold. This is deliberate:
+   two notes are signal, not panic.
+4. **Type:** `Helen left the stove on twice this week.`
+   Helen crosses the NPI drift threshold. The dashboard rebuilds to
+   `single_alert`, auto-scroll lands on a generated `CarePlanCard`, and the
+   evidence timeline now matches exactly what the judge saw typed.
+5. **Click the care-plan surface chips** — `Doctor visit`, `Tonight only`,
+   `Ask family`, `Safety check`. The same agent output is re-rendered into
+   different functional interfaces.
+6. **Type:** `I really don't know how much longer I can do this.`
+   Sarah crosses the ZBI hopelessness override. The UI rebuilds again into
+   family/caregiver triage.
+7. **Expand** the `GenerationReceipt` at the bottom — shows layout reason
    and which MCP tools fired.
-7. **Click Reset** — all three cards return to green. Start again.
 
 ## Important Honesty
 

@@ -63,6 +63,8 @@ body {
 .copilotKitDevConsoleTrigger,
 [class*="copilotKitDevConsole"],
 [class*="copilotKitAnnouncement"],
-[class*="copilotKitCloud"] {
+[class*="copilotKitCloud"],
+button[aria-label="Web Inspector"],
+button:has(img[alt="Inspector logo"]) {
   display: none !important;
 }

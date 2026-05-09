@@ -22,7 +22,9 @@ const SUGGESTIONS = [
   // Tom: full pattern in one phrase so a single click lands AMBER (edema +
   // appetite + missed anticoagulant). Repeats are idempotent — same domains.
   { label: 'Tom · full HF pattern',    prompt: "Tom's ankles are really swollen, he barely ate anything, missed his evening blood thinner, and just doesn't seem himself" },
-  { label: 'Helen · same question 4×', prompt: 'Mom asked me the same question four times today and seemed disoriented this afternoon' },
+  // Helen is a multi-observer story, so the quick example replays the
+  // actual four-observer scenario instead of logging one mild Sarah note.
+  { label: 'Replay Helen scenario',      prompt: 'Four people noticed Helen drift this week', triggerId: 'uc2' },
   { label: 'Sarah · breaking point',   prompt: "I really don't know how much longer I can do this" },
 ];
 
@@ -60,6 +62,7 @@ export default function AnchorChat({ onSent }: { onSent?: () => void } = {}) {
       });
       if (!res.ok) throw new Error(`Chat failed: HTTP ${res.status}`);
       const body = await res.json();
+      window.dispatchEvent(new CustomEvent('anchor:plan', { detail: body.plan }));
       // Show a friendly meta line that doesn't leak codes
       const meta = body.detected_signals?.length
         ? body.person_id
@@ -76,6 +79,37 @@ export default function AnchorChat({ onSent }: { onSent?: () => void } = {}) {
       if (onSent) {
         setTimeout(() => onSent(), 600);
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runSuggestion = async (s: (typeof SUGGESTIONS)[number]) => {
+    if (!('triggerId' in s) || !s.triggerId) {
+      await send(s.prompt);
+      return;
+    }
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    setTurns((t) => [...t, { id: `u-${Date.now()}`, role: 'user', text: s.prompt }]);
+    try {
+      const res = await fetch(`/demo/${s.triggerId}`, { method: 'POST' });
+      if (!res.ok) throw new Error(`Scenario failed: HTTP ${res.status}`);
+      const nextPlan = await res.json();
+      window.dispatchEvent(new CustomEvent('anchor:plan', { detail: nextPlan }));
+      setTurns((t) => [
+        ...t,
+        {
+          id: `a-${Date.now()}`,
+          role: 'agent',
+          text: 'I pulled together the multi-observer week and rebuilt Helen’s contributor-map view.',
+          meta: 'Generated Helen’s dashboard',
+        },
+      ]);
+      if (onSent) setTimeout(() => onSent(), 600);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -150,7 +184,7 @@ export default function AnchorChat({ onSent }: { onSent?: () => void } = {}) {
             <button
               key={s.prompt}
               type="button"
-              onClick={() => send(s.prompt)}
+              onClick={() => runSuggestion(s)}
               disabled={busy}
               className="text-[11px] px-2.5 py-1 rounded-full bg-white text-anchor-ink-600 border border-anchor-mist-100 hover:bg-anchor-indigo-600 hover:text-white hover:border-transparent disabled:opacity-50 transition-colors"
               title={s.prompt}

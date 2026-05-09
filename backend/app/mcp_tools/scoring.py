@@ -296,13 +296,13 @@ def score_cognitive_drift(person_id: str = "helen", today: int = 6) -> ScoreResu
         baseline_avg = 0.0
 
     # Drift rate — with a baseline floor so a near-zero baseline doesn't
-    # explode into 1000% drift on the first new observation. The floor (6)
-    # represents the noise level: roughly one mild signal per week is normal
-    # everyday forgetfulness for an 84-year-old, and the math should treat
-    # that as 'no real drift'. Higher floors give a smoother gradient as
-    # signals accumulate, which matches how real caregivers experience drift
-    # — a slow rise, not a cliff.
-    BASELINE_FLOOR = 6.0
+    # explode into 1000% drift on the first new observation. The floor (9)
+    # represents the noise level: roughly one or two mild signals per week
+    # can be everyday forgetfulness for an 84-year-old, and the math should
+    # let several typed notes accumulate before it rebuilds the care UI.
+    # Higher floors give a smoother gradient as signals accumulate, which
+    # matches how real caregivers experience drift — a slow rise, not a cliff.
+    BASELINE_FLOOR = 9.0
     effective_baseline = max(baseline_avg, BASELINE_FLOOR)
     if this_week_score > 0 or baseline_avg > 0:
         drift_pct = round((this_week_score - effective_baseline) / effective_baseline * 100, 1)
@@ -324,7 +324,10 @@ def score_cognitive_drift(person_id: str = "helen", today: int = 6) -> ScoreResu
     # Within-band intensity — see physical scoring for the same pattern.
     # NPI bands: green <15, yellow 15-30, amber 30-50, red >50 (drift %).
     if state == 'red':
-        intensity = min(1.0, max(0.0, (drift_pct - 50) / 100.0))   # 50%→0, 150%→1
+        # Helen's raw NPI drift can legitimately be very high when a low
+        # baseline accelerates. Keep the RED tier, but compress the UI score
+        # so it reads as "urgent pattern" rather than "near-zero health."
+        intensity = min(0.25, max(0.0, (drift_pct - 50) / 250.0))   # 50%→0, 112.5%→0.25
     elif state == 'amber':
         intensity = min(1.0, max(0.0, (drift_pct - 30) / 20.0))    # 30→0, 50→1
     elif state == 'yellow':

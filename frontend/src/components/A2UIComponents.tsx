@@ -781,6 +781,7 @@ const STEP_TONE = {
 
 type StepStatus = 'pending' | 'drafting' | 'sent' | 'done' | 'dismissed';
 type DraftTone = 'caring' | 'softer' | 'direct' | 'shorter' | 'specifics';
+type CareSurface = 'command' | 'doctor' | 'tonight' | 'family' | 'safety';
 
 // Per-step draft templates — one base message + tone variations rendered
 // inline so the caregiver can steer the generation without leaving the page.
@@ -933,10 +934,137 @@ const DraftMessagePanel = ({
   );
 };
 
+const SURFACE_LABELS: Record<CareSurface, string> = {
+  command: 'Command center',
+  doctor: 'Doctor visit',
+  tonight: 'Tonight only',
+  family: 'Ask family',
+  safety: 'Safety check',
+};
+
+const SurfacePill = ({
+  id,
+  active,
+  onClick,
+}: {
+  id: CareSurface;
+  active: boolean;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all ${
+      active
+        ? 'bg-white text-anchor-indigo-700 border-white shadow-soft'
+        : 'bg-white/10 text-white/90 border-white/25 hover:bg-white/20'
+    }`}
+  >
+    {SURFACE_LABELS[id]}
+  </button>
+);
+
+const GeneratedSurface = ({ surface, steps }: { surface: CareSurface; steps: CarePlanCardProps['steps'] }) => {
+  if (surface === 'command') return null;
+
+  const hasTom = steps.some((s) => s.id.startsWith('tom'));
+  const hasHelen = steps.some((s) => s.id.startsWith('helen'));
+  const hasSarah = steps.some((s) => s.id.startsWith('sarah'));
+
+  const chips = [
+    hasHelen ? 'Helen evidence' : null,
+    hasTom ? 'Tom symptom pattern' : null,
+    hasSarah ? 'Sarah load signal' : null,
+  ].filter(Boolean);
+
+  if (surface === 'doctor') {
+    return (
+      <div className="border-b border-anchor-mist-100 bg-white px-5 sm:px-7 py-5">
+        <div className="rounded-2xl border border-anchor-indigo-200 bg-gradient-to-br from-white via-anchor-cream-50 to-indigo-50/50 p-5">
+          <p className="text-[10.5px] uppercase tracking-[0.16em] font-bold text-anchor-indigo-600">
+            ⚡ Interface rebuilt for a doctor visit
+          </p>
+          <h3 className="font-display text-[22px] text-anchor-ink-900 mt-1">
+            Visit packet generated from the same observations
+          </h3>
+          <div className="grid gap-3 md:grid-cols-3 mt-4">
+            <div className="rounded-xl bg-white border border-anchor-mist-100 p-3">
+              <p className="text-[12px] font-bold text-anchor-ink-900">1. Evidence timeline</p>
+              <p className="text-[12px] text-anchor-ink-100 mt-1">Chronological notes, grouped by person and severity.</p>
+            </div>
+            <div className="rounded-xl bg-white border border-anchor-mist-100 p-3">
+              <p className="text-[12px] font-bold text-anchor-ink-900">2. Talking points</p>
+              <p className="text-[12px] text-anchor-ink-100 mt-1">Plain-English script for the right care team.</p>
+            </div>
+            <div className="rounded-xl bg-white border border-anchor-mist-100 p-3">
+              <p className="text-[12px] font-bold text-anchor-ink-900">3. Attachments</p>
+              <p className="text-[12px] text-anchor-ink-100 mt-1">{chips.join(' · ') || 'Current family state'}.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (surface === 'tonight') {
+    return (
+      <div className="border-b border-anchor-mist-100 bg-yellow-50/60 px-5 sm:px-7 py-5">
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            hasTom ? 'Tom: breathing, swelling, rapid weight change' : 'Tom: no overnight watch item',
+            hasHelen ? 'Helen: stove, doors, sundown confusion' : 'Helen: steady tonight',
+            hasSarah ? 'Sarah: sleep protected, one backup ask' : 'Sarah: no extra caregiver alert',
+          ].map((item) => (
+            <label key={item} className="flex items-start gap-2 rounded-xl bg-white border border-anchor-mist-100 p-3 text-[12.5px] text-anchor-ink-600">
+              <input type="checkbox" className="mt-0.5 accent-anchor-indigo-600" />
+              <span>{item}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (surface === 'family') {
+    return (
+      <div className="border-b border-anchor-mist-100 bg-indigo-50/50 px-5 sm:px-7 py-5">
+        <p className="text-[10.5px] uppercase tracking-[0.16em] font-bold text-anchor-indigo-600">
+          ⚡ Interface rebuilt for delegation
+        </p>
+        <div className="grid gap-3 md:grid-cols-2 mt-3">
+          <div className="rounded-xl bg-white border border-anchor-mist-100 p-4">
+            <p className="font-semibold text-anchor-ink-900 text-[14px]">Ask Mark for respite</p>
+            <p className="text-[12px] text-anchor-ink-100 mt-1">2-hour concrete ask, with tone controls after approval.</p>
+          </div>
+          <div className="rounded-xl bg-white border border-anchor-mist-100 p-4">
+            <p className="font-semibold text-anchor-ink-900 text-[14px]">Ask Mrs Chen for a check-in</p>
+            <p className="text-[12px] text-anchor-ink-100 mt-1">Tiny neighbour ask: stove, keys, front door.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-b border-anchor-mist-100 bg-red-50/50 px-5 sm:px-7 py-5">
+      <p className="text-[10.5px] uppercase tracking-[0.16em] font-bold text-state-red">
+        ⚡ Interface rebuilt for a safety check
+      </p>
+      <div className="mt-3 rounded-xl bg-white border border-red-100 p-4">
+        <p className="font-semibold text-anchor-ink-900 text-[14px]">Home safety sweep</p>
+        <p className="text-[12.5px] text-anchor-ink-100 mt-1">
+          Stove off, keys found, doors checked, medication container visible. This is a household checklist, not medical advice.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 export const CarePlanCard = (p: CarePlanCardProps) => {
   const [status, setStatus] = useState<Record<string, StepStatus>>(() =>
     Object.fromEntries(p.steps.map((s) => [s.id, 'pending' as StepStatus])),
   );
+  const [surface, setSurface] = useState<CareSurface>('command');
   const visible = p.steps.filter((s) => status[s.id] !== 'dismissed');
   return (
     <section
@@ -951,7 +1079,23 @@ export const CarePlanCard = (p: CarePlanCardProps) => {
           {p.title}
         </h2>
         <p className="text-[13px] opacity-90 mt-1.5 leading-relaxed">{p.subtitle}</p>
+        <div className="mt-4">
+          <p className="text-[10.5px] uppercase tracking-[0.16em] font-bold opacity-80 mb-2">
+            Rebuild this interface for
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(['command', 'doctor', 'tonight', 'family', 'safety'] as CareSurface[]).map((id) => (
+              <SurfacePill
+                key={id}
+                id={id}
+                active={surface === id}
+                onClick={() => setSurface(id)}
+              />
+            ))}
+          </div>
+        </div>
       </header>
+      <GeneratedSurface surface={surface} steps={p.steps} />
       <ol className="divide-y divide-anchor-mist-100">
         {visible.map((s) => {
           const st = status[s.id];

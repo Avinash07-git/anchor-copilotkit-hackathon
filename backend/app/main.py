@@ -34,12 +34,33 @@ load_dotenv()
 
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 
+_CHAT_DEMO_DAYS: dict[str, list[int]] = {
+    "helen": [1, 3, 5, 6],
+    "sarah": [14],
+}
+_chat_demo_cursor: dict[str, int] = {pid: 0 for pid in _CHAT_DEMO_DAYS}
+
 
 # --- Demo seeding ----------------------------------------------------------
 
 
+def _reset_chat_demo_cursor() -> None:
+    for pid in _chat_demo_cursor:
+        _chat_demo_cursor[pid] = 0
+
+
+def _next_chat_day(person_id: str) -> int:
+    days = _CHAT_DEMO_DAYS.get(person_id)
+    if not days:
+        return today_for(person_id)
+    idx = min(_chat_demo_cursor.get(person_id, 0), len(days) - 1)
+    _chat_demo_cursor[person_id] = idx + 1
+    return days[idx]
+
+
 def _seed_demo_logs() -> None:
     reset_store()
+    _reset_chat_demo_cursor()
     for day, observer, text in TOM_LOGS:
         log_observation("tom", observer, text, day)
     for day, observer, text in HELEN_LOGS:
@@ -218,6 +239,7 @@ async def _run_trigger(trigger_id: str) -> dict:
 async def demo_reset() -> dict:
     from app.mcp_tools.observation_parser import reset_store
     reset_store()
+    _reset_chat_demo_cursor()
     for person_id in PEOPLE:
         update_wellbeing_score(person_id)
     _state["plan_version"] += 1
@@ -296,7 +318,7 @@ async def chat(message: ChatMessage) -> ChatReply:
             plan=_state["plan"] or build_plan(triggered_by="chat_clarify", plan_version=_state["plan_version"]),
         )
 
-    today = today_for(person_id)
+    today = _next_chat_day(person_id)
     log_observation(person_id, message.observer, message.message, today, parsed["signals"])
     await broadcast("agent_step", {"text": f"log_observation → {person_id} day {today}"})
 

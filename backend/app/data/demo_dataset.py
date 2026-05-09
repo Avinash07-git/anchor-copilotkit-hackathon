@@ -70,11 +70,10 @@ TOM_LOGS: list[tuple[int, str, str]] = [
 ]
 
 # HELEN — only the 4-week prior baseline is pre-seeded. Week 0 (this week)
-# is intentionally EMPTY at baseline → drift rate = 0% = GREEN.
-# UC2 trigger fires 4 observations from 4 different observers in sequence,
-# which under the NPI multi-observer aggregation rule jumps the weekly score
-# from 0 → ~10/96 against a baseline of ~1.0/96 → drift > 50% → RED tier
-# ("rapid acceleration"). This is the ContributorMap moment.
+# is intentionally EMPTY at baseline → drift rate = 0% = GREEN. The judged
+# demo should add current-week notes through chat, one by one, so the timeline
+# and score decline unfold in front of the audience instead of appearing as
+# hidden past context.
 HELEN_LOGS: list[tuple[int, str, str]] = [
     # Week 4 baseline (days -28..-22) — one mild observation
     (-26, "sarah", "Helen forgot where she put her glasses"),
@@ -84,12 +83,6 @@ HELEN_LOGS: list[tuple[int, str, str]] = [
     (-12, "emma", "Grandma told the same story twice"),
     # Week 1 baseline (days -7..-1)
     (-4, "sarah", "She forgot where she put her keys, found them quickly"),
-    # Week 0 (current week, days 0-6, today=6) — three mild observations
-    # that push this-week NPI score to ~7, drift = (7-6)/6*100 = 16.7% = YELLOW.
-    # UC2 trigger then fires 4 more observations → RED (rapid acceleration).
-    (1, "sarah", "Helen told me the same story twice today"),
-    (3, "emma", "She asked me what day it was when I called"),
-    (5, "sarah", "She seemed a bit withdrawn today, sat alone most of the morning"),
 ]
 
 # SARAH — 14-day rolling window. Cumulative ZBI score normalises low (~6/100,
