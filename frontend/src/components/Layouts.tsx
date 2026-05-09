@@ -50,33 +50,78 @@ const partition = (components: PlanComponent[]) => {
 };
 
 // --- Calm dashboard ------------------------------------------------------
+// Banner copy switches on the worst current state across all three lenses
+// so the page can never say "everyone is calm" while the load meter says
+// "rising". When something is yellow but nothing is amber/red yet, we
+// explicitly explain that yellow is "early watch — Anchor is waiting for
+// another related signal before escalating" — addressing the feedback that
+// non-alert states should feel intentional, not invisible.
+
+const PERSON_FIRST_NAME: Record<string, string> = { tom: 'Tom', helen: 'Helen', sarah: 'Sarah' };
 
 const CalmDashboard = ({ components }: { components: PlanComponent[] }) => {
   const { familyLoad, receipt, rest } = partition(components);
   const drifts = rest.filter((c) => c.type === 'DriftScoreCard');
   const others = rest.filter((c) => c.type !== 'DriftScoreCard');
+
+  // Detect the worst state present so the banner reflects reality.
+  const states = drifts.map((d) => (d.props as Record<string, unknown>).state as string);
+  const yellowDrifts = drifts.filter((d) => (d.props as Record<string, unknown>).state === 'yellow');
+  const yellowNames = yellowDrifts
+    .map((d) => PERSON_FIRST_NAME[(d.props as Record<string, unknown>).person_id as string] ?? '')
+    .filter(Boolean);
+  const anyYellow = states.includes('yellow');
+  const allGreen = !anyYellow && !states.includes('amber') && !states.includes('red');
+
+  const banner = allGreen
+    ? {
+        ringSoft: 'bg-state-green/10',
+        ringMid:  'bg-state-green/20',
+        dot:      'bg-state-green',
+        accent:   'from-state-green via-anchor-indigo-400 to-state-green',
+        title:    'Everyone is calm right now.',
+        sub:      'Anchor is quietly tracking the family. Nothing needs your attention.',
+        pill:     '3 lenses · 0 alerts',
+      }
+    : {
+        ringSoft: 'bg-state-yellow/10',
+        ringMid:  'bg-state-yellow/20',
+        dot:      'bg-state-yellow',
+        accent:   'from-state-yellow via-anchor-indigo-400 to-state-yellow',
+        title:
+          yellowNames.length === 0
+            ? 'One thing is worth watching.'
+            : yellowNames.length === 1
+              ? `${yellowNames[0]} is on early watch.`
+              : `${yellowNames.join(' and ')} are on early watch.`,
+        sub:
+          'No action yet — Anchor is waiting for another related signal before escalating. ' +
+          'Watch states are intentional, not invisible.',
+        pill: `3 lenses · ${yellowDrifts.length} on watch`,
+      };
+
   return (
     <div className="space-y-6">
       {familyLoad && renderComponent(familyLoad)}
       <div className="relative overflow-hidden rounded-3xl border border-anchor-mist-100 bg-white shadow-soft">
-        <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-state-green via-anchor-indigo-400 to-state-green opacity-50" />
+        <div className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${banner.accent} opacity-50`} />
         <div className="flex items-center gap-5 px-7 py-6">
           <div className="relative w-12 h-12 grid place-items-center" aria-hidden>
-            <span className="absolute inset-0 rounded-full bg-state-green/10 animate-ping" />
-            <span className="absolute inset-2 rounded-full bg-state-green/20" />
-            <span className="relative w-2.5 h-2.5 rounded-full bg-state-green shadow-glow" />
+            <span className={`absolute inset-0 rounded-full ${banner.ringSoft} animate-ping`} />
+            <span className={`absolute inset-2 rounded-full ${banner.ringMid}`} />
+            <span className={`relative w-2.5 h-2.5 rounded-full ${banner.dot} shadow-glow`} />
           </div>
           <div className="flex-1">
             <h2 className="font-display text-[22px] text-anchor-ink-900 leading-tight">
-              Everyone is calm right now.
+              {banner.title}
             </h2>
             <p className="text-[13px] text-anchor-mist-400 mt-1">
-              Anchor is quietly tracking the family. Nothing needs your attention.
+              {banner.sub}
             </p>
           </div>
           <div className="hidden md:flex items-center gap-2 text-[11px] text-anchor-mist-400">
             <span className="px-2.5 py-1 rounded-full bg-anchor-cream-100 border border-anchor-mist-100">
-              3 lenses · 0 alerts
+              {banner.pill}
             </span>
           </div>
         </div>

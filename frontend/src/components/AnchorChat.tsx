@@ -19,12 +19,14 @@ interface ChatTurn {
 }
 
 const SUGGESTIONS = [
-  { label: 'Tom · ankles + appetite',  prompt: "Tom's ankles are really swollen and he barely ate anything" },
-  { label: 'Helen · same question 4×', prompt: 'Mom asked me the same question four times today' },
+  // Tom: full pattern in one phrase so a single click lands AMBER (edema +
+  // appetite + missed anticoagulant). Repeats are idempotent — same domains.
+  { label: 'Tom · full HF pattern',    prompt: "Tom's ankles are really swollen, he barely ate anything, missed his evening blood thinner, and just doesn't seem himself" },
+  { label: 'Helen · same question 4×', prompt: 'Mom asked me the same question four times today and seemed disoriented this afternoon' },
   { label: 'Sarah · breaking point',   prompt: "I really don't know how much longer I can do this" },
 ];
 
-export default function AnchorChat() {
+export default function AnchorChat({ onSent }: { onSent?: () => void } = {}) {
   const [turns, setTurns] = useState<ChatTurn[]>([
     {
       id: 'seed',
@@ -68,6 +70,12 @@ export default function AnchorChat() {
         ...t,
         { id: `a-${Date.now()}`, role: 'agent', text: body.reply, meta },
       ]);
+      // Auto-minimize the drawer so the rebuilt dashboard / care plan is
+      // fully visible. The agent's reply lives in the chat history; the
+      // dashboard is the real surface to read.
+      if (onSent) {
+        setTimeout(() => onSent(), 600);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

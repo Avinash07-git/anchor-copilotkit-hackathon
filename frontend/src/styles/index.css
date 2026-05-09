@@ -55,3 +55,14 @@ body {
 /* Smooth dashboard layout transitions — the Gen UI proof moment. */
 .layout-fade-enter { opacity: 0; transform: translateY(8px); }
 .layout-fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 320ms ease, transform 320ms ease; }
+
+/* Defensive: hide any CopilotKit dev/cloud announcement chrome that the
+   library injects on a missing publicApiKey. We're running fully local;
+   the announcement bubble distracts from the product and is not relevant. */
+.copilotKitDevConsole,
+.copilotKitDevConsoleTrigger,
+[class*="copilotKitDevConsole"],
+[class*="copilotKitAnnouncement"],
+[class*="copilotKitCloud"] {
+  display: none !important;
+}

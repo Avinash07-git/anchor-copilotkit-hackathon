@@ -52,7 +52,7 @@ export default function FloatingChatDrawer() {
           >
             ✕
           </button>
-          <AnchorChat />
+          <AnchorChat onSent={() => setOpen(false)} />
         </div>
       </div>
 

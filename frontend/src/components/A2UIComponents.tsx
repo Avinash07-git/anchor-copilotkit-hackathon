@@ -769,6 +769,8 @@ export const GenerationReceipt = (p: GenerationReceiptProps) => {
 // --- Care Plan Card ------------------------------------------------------
 // Generated steps with approve/dismiss/done state — turns the "scripted
 // dashboard" feel into a living workflow the caregiver can actually act on.
+// Approving a delegation step opens a draft-message inline editor with
+// tone controls — the "Copilot That Ships" moment the feedback called for.
 
 const STEP_TONE = {
   red:    'border-state-red/35 bg-state-red-soft',
@@ -777,7 +779,159 @@ const STEP_TONE = {
   green:  'border-state-green/35 bg-state-green-soft',
 } as const;
 
-type StepStatus = 'pending' | 'approved' | 'done' | 'dismissed';
+type StepStatus = 'pending' | 'drafting' | 'sent' | 'done' | 'dismissed';
+type DraftTone = 'caring' | 'softer' | 'direct' | 'shorter' | 'specifics';
+
+// Per-step draft templates — one base message + tone variations rendered
+// inline so the caregiver can steer the generation without leaving the page.
+// "specifics" injects concrete details from the family's current state so
+// the message reads as an extension of Anchor's reasoning, not a generic
+// template.
+const STEP_DRAFTS: Record<string, { recipient: string; channel: string; templates: Record<DraftTone, string> }> = {
+  helen_neighbour_check: {
+    recipient: 'Mrs Chen',
+    channel: 'Text · neighbour next door',
+    templates: {
+      caring:    "Hi Mrs Chen — Mom's had a confusing few days. Could you peek in on her this evening when you're back? A quick stove-and-keys check, nothing more. I really appreciate you. — Sarah",
+      softer:    "Hey Mrs Chen, only if it's easy — would you mind glancing in on Mom tonight? Just a quick stove-and-keys check. No rush, no worry, total favour. xx Sarah",
+      direct:    "Mrs Chen — can you check on Mom tonight? Stove and keys. She's been forgetful this week. Thanks. — Sarah",
+      shorter:   "Hey — could you check on Mom tonight? Stove + keys. Thank you. — S",
+      specifics: "Hi Mrs Chen — Mom asked the same question 4× yesterday and Emma said she thought it was 1987 on the phone. Could you peek in tonight and check the stove and the front door? Even 60 seconds helps. — Sarah",
+    },
+  },
+  helen_neuro_doc: {
+    recipient: "Helen's neurologist (Dr Patel)",
+    channel: 'Patient portal',
+    templates: {
+      caring:    "Dr Patel — sharing this week's observations ahead of Helen's visit. Four observers (me, Tom, Emma, our neighbour) noted memory and orientation changes within seven days. Anchor's contributor map is attached. Happy to discuss timing. — Sarah",
+      softer:    "Dr Patel, I wanted to flag a few things from this week before our appointment — nothing alarming, but the volume of observations from different family members felt worth bringing forward.",
+      direct:    "Dr Patel — Helen had 4 observations across 4 observers in 7 days (vs ~1 baseline). Same-question repetition, time disorientation, stove safety. Requesting earlier follow-up.",
+      shorter:   "Dr Patel — 4 observers, 4 cognitive flags in 7 days. Requesting earlier follow-up. — Sarah",
+      specifics: "Dr Patel — Helen this week: (1) asked same dinner question 4× / hour [Sarah, day 3], (2) thought it was 1987 on phone [Emma, day 5], (3) stove left on twice [Mrs Chen, day 6], (4) general slowing [Tom, day 0]. 9× her usual weekly observation rate. Anchor's NPI subset score crossed RED.",
+    },
+  },
+  tom_call_cardio: {
+    recipient: "Tom's cardiologist office",
+    channel: 'Phone script',
+    templates: {
+      caring:    "Hi — this is Sarah Reynolds, calling on behalf of my husband Tom. Over the past week Anchor flagged a pattern: edema, reduced appetite, and a missed anticoagulant dose. He's not in distress but I'd value your guidance on whether this needs a same-week visit.",
+      softer:    "Hi, hoping you can help me think through some symptoms Tom's had this week — swelling, less appetite, one missed evening blood thinner. Is this something to come in for or watch at home?",
+      direct:    "Calling about Tom Reynolds. Three concurrent signals in 7 days: edema (worsened today), appetite drop, missed anticoagulant dose Wednesday. Heart Failure framework flags this combo. Need triage advice today.",
+      shorter:   "Tom Reynolds — edema + missed anticoagulant + appetite drop, all this week. Need a same-week slot.",
+      specifics: "Tom Reynolds, post-discharge HF patient. 7-day window: edema present 4 days (severity escalating), 1 missed evening anticoagulant (Wed), appetite ~50% baseline 3 days, fatigue endorsed today. Score crossed AMBER on the validated symptom-monitoring framework. Combo flag: edema + missed anticoag both ≥ moderate.",
+    },
+  },
+  sarah_respite: {
+    recipient: 'Mark (Sarah\'s brother)',
+    channel: 'Text',
+    templates: {
+      caring:    "Hey Mark — I'm getting stretched thin this week with Dad's symptoms and Grandma's memory changes. Could you take two hours this weekend so I can rest and reset? Even just Saturday morning would mean a lot. Love you.",
+      softer:    "Hey, no pressure at all — I've been running pretty hard with Dad and Grandma both this week. If you happen to have a free couple of hours this weekend, I'd really appreciate the breather. Whenever works.",
+      direct:    "Mark — I need help. Two hours this weekend so I can sleep. Dad and Grandma both have things going on. Can you take Saturday morning?",
+      shorter:   "Mark — need 2 hrs this weekend, can you take Saturday AM? Stretched thin. Love you. — S",
+      specifics: "Hey Mark — Dad's HF symptoms crossed an alert threshold this week (cardiologist call already lined up) and Grandma's had four observers flag memory changes in seven days. I'm at the caregiver burnout band on Anchor. I need 2 hours of true off this weekend — sleep, not errands. Saturday morning?",
+    },
+  },
+};
+
+const TONE_LABELS: Record<DraftTone, string> = {
+  caring:    'Caring',
+  softer:    'Softer',
+  direct:    'More direct',
+  shorter:   'Shorter',
+  specifics: 'Add specifics',
+};
+
+const DraftMessagePanel = ({
+  stepId,
+  onSent,
+  onCancel,
+}: {
+  stepId: string;
+  onSent: () => void;
+  onCancel: () => void;
+}) => {
+  const draft = STEP_DRAFTS[stepId];
+  const [tone, setTone] = useState<DraftTone>('caring');
+  const [edited, setEdited] = useState<string | null>(null);
+  if (!draft) {
+    // Steps without a delegation template (e.g. "what to watch tonight")
+    // just resolve to approved without opening a draft.
+    return null;
+  }
+  const text = edited ?? draft.templates[tone];
+  return (
+    <div className="mt-3 w-full rounded-xl border border-anchor-indigo-200 bg-gradient-to-br from-anchor-cream-50 via-white to-anchor-cream-50 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <p className="text-[10.5px] uppercase tracking-[0.16em] font-bold text-anchor-indigo-600">
+            ⚡ Anchor drafted this · awaiting your approval
+          </p>
+          <p className="text-[13px] text-anchor-ink-900 font-semibold mt-0.5">
+            Draft to <span className="text-anchor-indigo-700">{draft.recipient}</span>
+          </p>
+          <p className="text-[10.5px] text-anchor-mist-400">{draft.channel}</p>
+        </div>
+      </div>
+      <textarea
+        value={text}
+        onChange={(e) => setEdited(e.target.value)}
+        rows={5}
+        className="w-full rounded-lg border border-anchor-mist-100 px-3 py-2 text-[13px] leading-relaxed bg-white focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 focus:border-anchor-indigo-600"
+      />
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-anchor-mist-400 mb-1.5">
+          Tone — Anchor regenerates inline
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(TONE_LABELS) as DraftTone[]).map((t) => {
+            const active = tone === t && edited === null;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => {
+                  setTone(t);
+                  setEdited(null);
+                }}
+                className={`px-3 py-1 rounded-full text-[11.5px] font-semibold border transition-colors ${
+                  active
+                    ? 'bg-anchor-indigo-600 text-white border-transparent'
+                    : 'bg-white border-anchor-mist-100 text-anchor-ink-600 hover:bg-anchor-cream-100'
+                }`}
+              >
+                {TONE_LABELS[t]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onSent}
+          className="px-4 py-1.5 rounded-lg bg-anchor-indigo-600 text-white text-[12.5px] font-semibold hover:bg-anchor-indigo-700 transition-colors"
+        >
+          Send
+        </button>
+        <button
+          type="button"
+          onClick={() => setEdited(text)}
+          className="px-4 py-1.5 rounded-lg bg-white border border-anchor-mist-100 text-anchor-ink-600 text-[12.5px] font-semibold hover:bg-anchor-cream-100 transition-colors"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-1.5 rounded-lg text-anchor-mist-400 text-[12.5px] hover:text-anchor-ink-600 transition-colors"
+        >
+          Not now
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export const CarePlanCard = (p: CarePlanCardProps) => {
   const [status, setStatus] = useState<Record<string, StepStatus>>(() =>
@@ -791,7 +945,7 @@ export const CarePlanCard = (p: CarePlanCardProps) => {
     >
       <header className="px-6 sm:px-8 pt-6 pb-4 bg-gradient-to-r from-anchor-indigo-600 via-anchor-indigo-500 to-anchor-coral-400 text-white">
         <p className="text-[10.5px] uppercase tracking-[0.18em] font-bold opacity-90">
-          ⚡ Generated just now
+          ⚡ Anchor generated this care command center
         </p>
         <h2 className="font-display text-[24px] sm:text-[26px] mt-1 leading-tight">
           {p.title}
@@ -802,59 +956,79 @@ export const CarePlanCard = (p: CarePlanCardProps) => {
         {visible.map((s) => {
           const st = status[s.id];
           const tone = STEP_TONE[s.severity] ?? STEP_TONE.amber;
+          const hasDraft = !!STEP_DRAFTS[s.id];
           return (
-            <li key={s.id} className={`px-5 sm:px-7 py-4 flex flex-wrap gap-4 items-start border-l-4 ${tone}`}>
-              <span aria-hidden className="text-[22px] leading-none w-9 h-9 grid place-items-center rounded-xl bg-white border border-anchor-mist-100 shadow-soft shrink-0">
-                {s.icon}
-              </span>
-              <div className="flex-1 min-w-[200px]">
-                <p className="font-semibold text-[14px] text-anchor-ink-900 leading-snug">
-                  {s.title}
-                </p>
-                <p className="text-[12.5px] text-anchor-ink-100 mt-1 leading-relaxed">{s.detail}</p>
-                {s.assignee_hint && (
-                  <p className="text-[10.5px] uppercase tracking-[0.14em] font-bold text-anchor-mist-400 mt-2">
-                    For: <span className="text-anchor-indigo-600">{s.assignee_hint}</span>
+            <li key={s.id} className={`px-5 sm:px-7 py-4 border-l-4 ${tone}`}>
+              <div className="flex flex-wrap gap-4 items-start">
+                <span aria-hidden className="text-[22px] leading-none w-9 h-9 grid place-items-center rounded-xl bg-white border border-anchor-mist-100 shadow-soft shrink-0">
+                  {s.icon}
+                </span>
+                <div className="flex-1 min-w-[200px]">
+                  <p className="font-semibold text-[14px] text-anchor-ink-900 leading-snug">
+                    {s.title}
                   </p>
-                )}
+                  <p className="text-[12.5px] text-anchor-ink-100 mt-1 leading-relaxed">{s.detail}</p>
+                  {s.assignee_hint && (
+                    <p className="text-[10.5px] uppercase tracking-[0.14em] font-bold text-anchor-mist-400 mt-2">
+                      For: <span className="text-anchor-indigo-600">{s.assignee_hint}</span>
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5 shrink-0">
+                  {st === 'pending' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStatus((m) => ({
+                            ...m,
+                            [s.id]: hasDraft ? 'drafting' : 'sent',
+                          }))
+                        }
+                        className="px-3 py-1.5 rounded-lg bg-anchor-indigo-600 text-white text-[12px] font-semibold hover:bg-anchor-indigo-700 transition-colors"
+                      >
+                        {hasDraft ? 'Approve & draft' : 'Approve'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStatus((m) => ({ ...m, [s.id]: 'done' }))}
+                        className="px-3 py-1.5 rounded-lg bg-white border border-anchor-mist-100 text-anchor-ink-600 text-[12px] font-semibold hover:bg-anchor-cream-100 transition-colors"
+                      >
+                        Done already
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStatus((m) => ({ ...m, [s.id]: 'dismissed' }))}
+                        className="px-3 py-1.5 rounded-lg text-anchor-mist-400 text-[12px] hover:text-anchor-ink-600 transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </>
+                  )}
+                  {st === 'drafting' && (
+                    <span className="px-3 py-1.5 rounded-lg bg-anchor-indigo-600/10 text-anchor-indigo-700 text-[12px] font-semibold inline-flex items-center gap-1.5">
+                      ✎ Drafting…
+                    </span>
+                  )}
+                  {st === 'sent' && (
+                    <span className="px-3 py-1.5 rounded-lg bg-state-green/10 text-state-green text-[12px] font-semibold inline-flex items-center gap-1.5">
+                      ✓ Sent
+                    </span>
+                  )}
+                  {st === 'done' && (
+                    <span className="px-3 py-1.5 rounded-lg bg-state-green/10 text-state-green text-[12px] font-semibold inline-flex items-center gap-1.5">
+                      ✓ Done
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1.5 shrink-0">
-                {st === 'pending' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setStatus((m) => ({ ...m, [s.id]: 'approved' }))}
-                      className="px-3 py-1.5 rounded-lg bg-anchor-indigo-600 text-white text-[12px] font-semibold hover:bg-anchor-indigo-700 transition-colors"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStatus((m) => ({ ...m, [s.id]: 'done' }))}
-                      className="px-3 py-1.5 rounded-lg bg-white border border-anchor-mist-100 text-anchor-ink-600 text-[12px] font-semibold hover:bg-anchor-cream-100 transition-colors"
-                    >
-                      Done already
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStatus((m) => ({ ...m, [s.id]: 'dismissed' }))}
-                      className="px-3 py-1.5 rounded-lg text-anchor-mist-400 text-[12px] hover:text-anchor-ink-600 transition-colors"
-                    >
-                      Dismiss
-                    </button>
-                  </>
-                )}
-                {st === 'approved' && (
-                  <span className="px-3 py-1.5 rounded-lg bg-anchor-indigo-600/10 text-anchor-indigo-700 text-[12px] font-semibold inline-flex items-center gap-1.5">
-                    <span aria-hidden>✓</span> Approved
-                  </span>
-                )}
-                {st === 'done' && (
-                  <span className="px-3 py-1.5 rounded-lg bg-state-green/10 text-state-green text-[12px] font-semibold inline-flex items-center gap-1.5">
-                    <span aria-hidden>✓</span> Done
-                  </span>
-                )}
-              </div>
+              {st === 'drafting' && (
+                <DraftMessagePanel
+                  stepId={s.id}
+                  onSent={() => setStatus((m) => ({ ...m, [s.id]: 'sent' }))}
+                  onCancel={() => setStatus((m) => ({ ...m, [s.id]: 'pending' }))}
+                />
+              )}
             </li>
           );
         })}

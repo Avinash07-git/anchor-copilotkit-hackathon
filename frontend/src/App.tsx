@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAGUIStream } from './hooks/useAGUIStream';
 import { renderLayout } from './components/Layouts';
 import CopilotKitProtocolProof from './components/CopilotKitProtocolProof';
@@ -31,6 +31,15 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeTrigger, setActiveTrigger] = useState<string | null>(null);
 
+  // Demo-mode hygiene: reset backend to clean state once on first load so
+  // refreshes never inherit stale data from a prior session. The
+  // ?keep=1 escape hatch is for development.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('keep') === '1') return;
+    fetch('/demo/reset', { method: 'POST' }).catch(() => undefined);
+  }, []);
+
   // Cold-load fallback in case SSE plan_updated hasn't arrived yet
   const [bootPlan, setBootPlan] = useState<typeof plan>(null);
   useEffect(() => {
@@ -40,6 +49,26 @@ export default function App() {
       .then(setBootPlan)
       .catch(() => undefined);
   }, [plan, bootPlan]);
+
+  // When the plan rebuilds and contains a CarePlanCard, scroll it into
+  // view so the caregiver doesn't miss it under the fold or the chat
+  // drawer. Only fires on plan_version changes — not on bootPlan idle.
+  const planVersion = (plan ?? bootPlan)?.meta?.plan_version;
+  const hasCarePlan = ((plan ?? bootPlan)?.components ?? []).some(
+    (c: { type: string }) => c.type === 'CarePlanCard',
+  );
+  const lastScrolledVersion = useRef<number | null>(null);
+  useEffect(() => {
+    if (!planVersion || !hasCarePlan) return;
+    if (lastScrolledVersion.current === planVersion) return;
+    lastScrolledVersion.current = planVersion;
+    // Wait a beat for the new DOM to land.
+    const t = setTimeout(() => {
+      const el = document.querySelector('[aria-label="Generated care plan"]');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 250);
+    return () => clearTimeout(t);
+  }, [planVersion, hasCarePlan]);
 
   const livePlan = plan ?? bootPlan;
   const dev = isDev();

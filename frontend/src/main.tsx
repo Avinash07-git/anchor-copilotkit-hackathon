@@ -33,7 +33,10 @@ class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <RootErrorBoundary>
-      <CopilotKit runtimeUrl="/api/copilotkit">
+      <CopilotKit
+        runtimeUrl="/api/copilotkit"
+        showDevConsole={false}
+      >
         <App />
       </CopilotKit>
     </RootErrorBoundary>

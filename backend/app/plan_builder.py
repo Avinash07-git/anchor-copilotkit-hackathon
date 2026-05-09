@@ -486,8 +486,8 @@ def _meta(triggered_by: str | None, plan_version: int) -> dict:
 # Anchor tracks the care SYSTEM, not just the patients. The originality move.
 
 _LOAD_LEVELS = {
-    "calm":     {"score": 95, "headline": "Family load: Calm",     "tone": "All three lenses steady. Anchor is quietly tracking the system."},
-    "rising":   {"score": 70, "headline": "Family load: Rising",   "tone": "Something is starting to drift. Worth a glance, not a panic."},
+    "calm":     {"score": 95, "headline": "Family load: Calm",     "tone": "Most caregiving apps track the patient. Anchor tracks the load on the family system. Right now, everything is steady."},
+    "rising":   {"score": 70, "headline": "Family load: Rising",   "tone": "Anchor is tracking early signals before they become an alert. Worth a glance, not a panic."},
     "high":     {"score": 40, "headline": "Family load: High",     "tone": "Multiple lenses asking for attention; one caregiver shoulders most of it."},
     "critical": {"score": 18, "headline": "Family load: Critical", "tone": "Three crossings at once. The care system needs decompressing tonight."},
 }
@@ -615,7 +615,7 @@ def _care_plan_card(scores: dict[str, dict], matches: dict[str, dict]) -> dict |
             if "tom" in matches else "Tom: steady",
             "Helen: confusion at sundown is the marker"
             if "helen" in matches else "Helen: steady",
-            "Yourself: 7 hours sleep is a clinical decision, not a luxury"
+            "Yourself: protecting your sleep helps protect the care system"
             if "sarah" in matches else "Sarah: steady",
         ]),
         "assignee_hint": None,
@@ -630,11 +630,28 @@ def _care_plan_card(scores: dict[str, dict], matches: dict[str, dict]) -> dict |
     elif len(matches) >= 2:
         title = "Anchor's plan for the family — next 24 hours"
 
+    # Inline "Generated because" mini-receipt — the feedback wanted the
+    # generative-UI reasoning visible right next to the plan, not buried
+    # at the bottom. Lists each crossed lens in plain English.
+    color_words = {"red": "red", "amber": "amber", "yellow": "yellow"}
+    parts = []
+    for pid in pids_by_urgency:
+        nm = {"tom": "Tom", "helen": "Helen", "sarah": "Sarah"}[pid]
+        cw = color_words.get(scores[pid]["color"], scores[pid]["color"])
+        parts.append(f"{nm} {cw}")
+    reason_str = " + ".join(parts) if parts else "current family state"
+
+    subtitle = (
+        f"Generated because: {reason_str}. "
+        "Each step is a suggestion, not a directive. "
+        "Approve to draft a real message; tone controls live inline."
+    )
+
     return {
         "type": "CarePlanCard",
         "props": {
             "title": title,
-            "subtitle": "Each step is a suggestion, not a directive. Approve, edit, or dismiss.",
+            "subtitle": subtitle,
             "steps": steps[:5],
             "disclaimer": DISCLAIMER,
         },
