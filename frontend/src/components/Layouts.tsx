@@ -247,11 +247,19 @@ export function renderLayout(plan: UIPlan) {
     case 'calm_dashboard':   return <CalmDashboard components={plan.components} />;
     case 'single_alert':     return <SingleAlert components={plan.components} />;
     case 'combined_triage':  return <CombinedTriage components={plan.components} />;
-    case 'dual_risk':
-      // dual_risk is deprecated — the 2-column split forced wide cards to
-      // overflow their containers. Any incoming dual_risk plan now renders
-      // through the same per-person sectioned layout as combined_triage.
-      return <CombinedTriage components={plan.components} />;
+    case 'dual_risk': {
+      // dual_risk is deprecated. The old shape put components inside
+      // slots.{left_panel,right_panel} with an empty top-level components
+      // array. Flatten everything into a single components list and let
+      // CombinedTriage do its per-person grouping. Defensive fallback so
+      // an in-flight old-shape plan never blanks the screen.
+      const flattened = [
+        ...plan.components,
+        ...(plan.slots?.left_panel ?? []),
+        ...(plan.slots?.right_panel ?? []),
+      ];
+      return <CombinedTriage components={flattened} />;
+    }
     default:
       return (
         <pre className="text-xs font-mono bg-anchor-cream-100 p-3 rounded">
