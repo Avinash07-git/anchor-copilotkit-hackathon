@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAGUIStream } from './hooks/useAGUIStream';
 import { renderLayout } from './components/Layouts';
-import FloatingChatDrawer from './components/FloatingChatDrawer';
 import CopilotKitProtocolProof from './components/CopilotKitProtocolProof';
+import { CopilotPopup } from '@copilotkit/react-core/v2';
 
 /**
  * Anchor — App shell.
@@ -189,11 +189,28 @@ export default function App() {
       {/* Reasoning ribbon — fixed thin bar above the chat pill */}
       <ReasoningRibbon steps={steps} />
 
-      {/* Floating chat drawer */}
-      <FloatingChatDrawer />
+      {/* CopilotKit Generative UI popup — the real chat where AI renders cards */}
+      <CopilotPopup
+        agentId="anchor_agent"
+        instructions={`You are Anchor, a calm AI companion for family caregivers.
+The Reynolds family: Tom 68 (heart failure, body lens), Helen 84 (early dementia, mind lens), Sarah 42 (primary caregiver, caregiver lens).
 
-      {/* CopilotKit protocol layer — invisible, hooks register for judges */}
-      <CopilotKitProtocolProof />
+When the user asks about the family or dashboard:
+- Call showDriftScore for each relevant person to display their live wellbeing card
+- Call showPatternAlert when a threshold has been crossed (check the dashboard state)
+- Call showCombinedTriage when all three lenses are active simultaneously
+- Call confirmFamilyMessage before sending any family communication
+
+Never make clinical claims. Surface patterns, not diagnoses. Always include citations verbatim.`}
+        defaultOpen={false}
+        labels={{
+          modalHeaderTitle: 'Anchor',
+          chatInputPlaceholder: 'Ask about Tom, Helen, or Sarah…',
+        }}
+      />
+
+      {/* CopilotKit protocol hooks — invisible, registers useComponent + useHumanInTheLoop */}
+      <CopilotKitProtocolProof plan={livePlan} />
 
       <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }`}</style>
     </main>

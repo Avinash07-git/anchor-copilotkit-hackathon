@@ -1,20 +1,27 @@
-"""CopilotKit / LangGraph agent — Anchor's real protocol compliance layer.
+"""CopilotKit / LangGraph agent — Anchor's Generative UI backend layer.
 
-Creates anchor_agent (LangGraphAGUIAgent) that:
+anchor_agent is a LangGraphAGUIAgent that:
   1. Reads current wellbeing scores from the in-memory PEOPLE store
-  2. Emits them as live agent state → useCoAgent syncs to the frontend
-  3. Is served via the real CopilotKit FastAPI endpoint at /api/copilotkit
+  2. Emits AIMessage tool calls matching the frontend useComponent registrations:
+       - showDriftScore    → renders DriftScoreCard in the CopilotPopup chat
+       - showPatternAlert  → renders PatternAlertCard with peer-reviewed citation
+       - showCombinedTriage → renders CombinedTriageView when all three lenses fire
+       - confirmFamilyMessage → useHumanInTheLoop approval gate
+  3. Served via real CopilotKit FastAPI endpoint at /api/copilotkit
 
-Runs ALONGSIDE the existing SSE/UIPlan path — does not replace it.
-The frontend CopilotKitProtocolProof component (useCoAgent + useCopilotAction)
-subscribes to this state so judges see real protocol compliance.
+The backend is rule-based (no LLM needed) so it NEVER fails during the demo.
+Gemini can be layered in later via the system prompt, but the tool-call path
+is deterministic and always correct.
 """
 from __future__ import annotations
 
-from typing import Any
+import uuid
+from typing import Annotated, Any
 
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
+from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
 from copilotkit import CopilotKitRemoteEndpoint, LangGraphAGUIAgent
@@ -23,101 +30,201 @@ from copilotkit.langgraph import CopilotKitState, copilotkit_emit_state
 
 
 # ---------------------------------------------------------------------------
-# Agent state shape
+# State
 # ---------------------------------------------------------------------------
 
-class PersonState(TypedDict):
-    score: int
-    state: str
-    signals: list[str]
+class AnchorState(CopilotKitState):
+    """LangGraph state.
 
-
-class AnchorAgentState(CopilotKitState):
-    """Live wellbeing state for all three people.
-
-    TypedDict fields are merged into CopilotKitState (which is itself a dict
-    subclass). The frontend useCoAgent("anchor_agent") reads these keys.
+    CopilotKitState is a dict subclass that adds the `copilotkit` metadata key.
+    We add `messages` (the AG-UI conversation thread) here.
     """
-    tom: PersonState
-    helen: PersonState
-    sarah: PersonState
-    combined: bool  # True when combined_triage layout is active
+    messages: Annotated[list, add_messages]
 
 
 # ---------------------------------------------------------------------------
-# Graph node
+# People metadata (static, matches the demo dataset)
 # ---------------------------------------------------------------------------
 
-def _person_state_from_people(people: dict[str, Any], person_id: str) -> PersonState:
-    """Extract the fields useCoAgent cares about from PEOPLE[person_id]."""
-    p = people.get(person_id, {})
-    return PersonState(
-        score=int(p.get("current_score", 75)),
-        state=str(p.get("current_state", "green")),
-        signals=[],  # active_domains come from ScoreResult; PEOPLE keeps summary only
-    )
+_PEOPLE_META = {
+    "tom":   {"display_name": "Tom Reynolds",   "age": 68, "lens": "body",      "lens_label": "Body · Heart"},
+    "helen": {"display_name": "Helen Reynolds", "age": 84, "lens": "mind",      "lens_label": "Mind · Memory"},
+    "sarah": {"display_name": "Sarah Reynolds", "age": 42, "lens": "caregiver", "lens_label": "Caregiver Wellbeing"},
+}
+
+DISCLAIMER = "Anchor is not a medical device. It surfaces patterns from what you tell it so you can share them with your healthcare team. Always consult a qualified clinician for medical decisions."
 
 
-async def score_and_emit(state: AnchorAgentState, config: RunnableConfig) -> AnchorAgentState:
-    """Single-node graph: read current scores → emit → done.
+def _tc(name: str, args: dict) -> dict:
+    """Build a LangChain-compatible tool_call dict."""
+    return {
+        "name": name,
+        "args": args,
+        "id": f"tc_{uuid.uuid4().hex[:10]}",
+        "type": "tool_call",
+    }
 
-    The CopilotKit runtime calls this node when the frontend fires an action
-    (useCopilotAction) or when the agent heartbeats. We pull the latest
-    in-memory scores from PEOPLE and push them to useCoAgent.
+
+# ---------------------------------------------------------------------------
+# Graph node — read state, build tool calls, return AI message
+# ---------------------------------------------------------------------------
+
+async def anchor_router(state: AnchorState, config: RunnableConfig) -> dict:
+    """Core node: read wellbeing state → emit the right card tool calls.
+
+    This node is invoked every time the user sends a message. It:
+    1. Refreshes wellbeing scores from the in-memory store
+    2. Checks whether any pattern alert was triggered
+    3. Emits showDriftScore / showPatternAlert / showCombinedTriage tool calls
+       so the frontend useComponent hooks render the cards in the CopilotPopup
+
+    No LLM required — rule-based, always reliable for the demo.
     """
     from app.data.demo_dataset import PEOPLE
     from app.mcp_tools.scoring import update_wellbeing_score
+    from app.mcp_tools.patterns import check_pattern_match
 
-    # Recalculate all three scores so state is always fresh
-    results: dict[str, Any] = {}
+    # Refresh all scores
+    scores: dict[str, Any] = {}
+    patterns: dict[str, Any] = {}
     for pid in ("tom", "helen", "sarah"):
         try:
-            results[pid] = update_wellbeing_score(pid)
+            scores[pid] = update_wellbeing_score(pid)
         except Exception:
-            results[pid] = None
+            scores[pid] = None
+        try:
+            patterns[pid] = check_pattern_match(pid)
+        except Exception:
+            patterns[pid] = None
 
-    def _extract(pid: str) -> PersonState:
-        r = results.get(pid)
-        if r:
-            signals = [
+    # Emit shared state to useAgent / useCoAgent on the frontend
+    agent_state = {
+        pid: {
+            "score": scores[pid]["wellbeing_score"] if scores[pid] else 75,
+            "state": scores[pid]["state"] if scores[pid] else "green",
+            "signals": [
                 d.get("id", "")
-                for d in (r.get("active_domains") or [])
+                for d in (scores[pid].get("active_domains") or [] if scores[pid] else [])
                 if d.get("severity", 0) >= 2
-            ]
-            return PersonState(
-                score=int(r.get("wellbeing_score", 75)),
-                state=str(r.get("state", "green")),
-                signals=signals[:5],  # cap to keep the payload small
+            ][:5],
+        }
+        for pid in ("tom", "helen", "sarah")
+    }
+    agent_state["combined"] = all(
+        agent_state[p]["state"] != "green" for p in ("tom", "helen", "sarah")
+    )
+    await copilotkit_emit_state(config, {**state, **agent_state})
+
+    # --- Decide which cards to show ---
+
+    all_not_green = agent_state["combined"]
+    tool_calls: list[dict] = []
+
+    if all_not_green:
+        # Combined triage view
+        rows = []
+        for pid in ("tom", "helen", "sarah"):
+            s = scores[pid]
+            m = _PEOPLE_META[pid]
+            p = patterns.get(pid)
+            headline = (
+                p["title"]
+                if p
+                else (s.get("rebuild_reason") or f"Wellbeing score {s['wellbeing_score']}/100")
+                if s
+                else "Monitoring…"
             )
-        p = PEOPLE.get(pid, {})
-        return PersonState(
-            score=int(p.get("current_score", 75)),
-            state=str(p.get("current_state", "green")),
-            signals=[],
-        )
+            rows.append({
+                "person_id": pid,
+                "display_name": m["display_name"],
+                "lens_label": m["lens_label"],
+                "color": s["color"] if s else "gray",
+                "headline": headline,
+                "recommended_first_action": (
+                    p["suggested_actions"][0]
+                    if p and p.get("suggested_actions")
+                    else "Review with healthcare team"
+                ),
+            })
+        # Sort: RED first, then by urgency
+        order = {"red": 0, "amber": 1, "yellow": 2, "green": 3, "gray": 4}
+        rows.sort(key=lambda r: order.get(r["color"], 4))
 
-    tom = _extract("tom")
-    helen = _extract("helen")
-    sarah = _extract("sarah")
+        tool_calls.append(_tc("showCombinedTriage", {
+            "title": "All three family members need attention",
+            "rationale": "All three wellbeing thresholds crossed simultaneously — showing combined view.",
+            "rows": rows,
+            "disclaimer": DISCLAIMER,
+        }))
 
-    # combined_triage fires when all three are not-green
-    combined = all(
-        v["state"] not in ("green",)
-        for v in (tom, helen, sarah)
-    )
+    else:
+        # Individual score cards (+ pattern alerts where triggered)
+        for pid in ("tom", "helen", "sarah"):
+            s = scores[pid]
+            m = _PEOPLE_META[pid]
+            if not s:
+                continue
 
-    new_state = AnchorAgentState(
-        **state,
-        tom=tom,
-        helen=helen,
-        sarah=sarah,
-        combined=combined,
-    )
+            tool_calls.append(_tc("showDriftScore", {
+                "person_id": pid,
+                "display_name": m["display_name"],
+                "age": m["age"],
+                "lens": m["lens"],
+                "lens_label": m["lens_label"],
+                "score": s["wellbeing_score"],
+                "color": s["color"],
+                "state": s["state"],
+                "trend": "down" if s["state"] not in ("green",) else "flat",
+                "one_liner": s.get("rebuild_reason") or f"Wellbeing score {s['wellbeing_score']}/100",
+                "last_updated": "today",
+                "raw_score_label": s["raw_score_label"],
+                "instrument": s.get("instrument", ""),
+                "active_signals": [
+                    d.get("id", "")
+                    for d in (s.get("active_domains") or [])[:3]
+                ],
+            }))
 
-    # Emit to useCoAgent — this is the CopilotKit AG-UI protocol moment
-    await copilotkit_emit_state(config, new_state)
+            p = patterns.get(pid)
+            if p:
+                signals = [
+                    {
+                        "day_label": d.get("id", ""),
+                        "text": d.get("evidence", "Logged observation"),
+                        "extracted_signal": d.get("id", ""),
+                    }
+                    for d in (s.get("active_domains") or [])[:3]
+                ]
+                tool_calls.append(_tc("showPatternAlert", {
+                    "person_id": pid,
+                    "pattern_id": p.get("pattern_id", ""),
+                    "severity_color": s["color"],
+                    "title": p.get("title", "Pattern detected"),
+                    "why_it_matters": p.get("why_it_matters", ""),
+                    "signals": signals,
+                    "suggested_actions": (p.get("suggested_actions") or [])[:3],
+                    "disclaimer": DISCLAIMER,
+                    "citation": p.get("citation", ""),
+                    "raw_score_label": s["raw_score_label"],
+                    "rebuild_reason": s.get("rebuild_reason") or "",
+                    "instrument": s.get("instrument", ""),
+                }))
 
-    return new_state
+    # Compose a calm text intro + the tool calls in one AI message
+    who_needs_watch = [
+        _PEOPLE_META[pid]["display_name"]
+        for pid in ("tom", "helen", "sarah")
+        if scores.get(pid) and scores[pid]["state"] not in ("green",)
+    ]
+    if not who_needs_watch:
+        text = "The Reynolds family is doing well right now — all three wellbeing scores are calm."
+    elif all_not_green:
+        text = "All three family members have signals worth raising with their care team. Here's the combined picture:"
+    else:
+        names = " and ".join(who_needs_watch)
+        text = f"Here's the current wellbeing picture. {names} {'has' if len(who_needs_watch) == 1 else 'have'} signals worth watching:"
+
+    return {"messages": [AIMessage(content=text, tool_calls=tool_calls)]}
 
 
 # ---------------------------------------------------------------------------
@@ -125,10 +232,10 @@ async def score_and_emit(state: AnchorAgentState, config: RunnableConfig) -> Anc
 # ---------------------------------------------------------------------------
 
 def _build_graph() -> Any:
-    builder: StateGraph = StateGraph(AnchorAgentState)
-    builder.add_node("score_and_emit", score_and_emit)
-    builder.set_entry_point("score_and_emit")
-    builder.add_edge("score_and_emit", END)
+    builder: StateGraph = StateGraph(AnchorState)
+    builder.add_node("anchor_router", anchor_router)
+    builder.set_entry_point("anchor_router")
+    builder.add_edge("anchor_router", END)
     return builder.compile()
 
 
@@ -141,23 +248,24 @@ _graph = _build_graph()
 anchor_agent = LangGraphAGUIAgent(
     name="anchor_agent",
     description=(
-        "Reads current wellbeing scores for Tom, Helen, and Sarah "
-        "and emits live state to the caregiver dashboard."
+        "Reads current wellbeing scores for the Reynolds family and renders "
+        "the appropriate Anchor cards — DriftScoreCard, PatternAlertCard, "
+        "CombinedTriageView — directly in the chat via Generative UI."
     ),
     graph=_graph,
 )
 
 ck_sdk = CopilotKitRemoteEndpoint(agents=[anchor_agent])
 
+
 # ---------------------------------------------------------------------------
 # Public helper — called from main.py
 # ---------------------------------------------------------------------------
-
 
 def mount_copilotkit(fastapi_app: Any, prefix: str = "/api/copilotkit") -> None:
     """Wire the CopilotKit SDK into the FastAPI app.
 
     Call this AFTER app creation and BEFORE uvicorn starts.
-    Replaces the no-op stub route with real CopilotKit route handlers.
+    Adds real CopilotKit route handlers at the given prefix.
     """
     add_fastapi_endpoint(fastapi_app, ck_sdk, prefix)
