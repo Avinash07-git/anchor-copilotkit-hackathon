@@ -396,7 +396,11 @@ def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> N
             body = await request.json()
         except Exception:
             pass
+        print(f"[CK POST] body keys: {list(body.keys())} method={body.get('method')!r} msgs={len(body.get('messages', []))}", flush=True)
         if body.get("method") == "info":
+            return JSONResponse(_INFO_RESPONSE)
+        # Only stream if there's an actual user message to process
+        if not _extract_user_message(body):
             return JSONResponse(_INFO_RESPONSE)
         run_id = body.get("runId") or f"run_{uuid.uuid4().hex[:12]}"
         thread_id = body.get("threadId") or f"thread_{uuid.uuid4().hex[:12]}"
@@ -420,9 +424,14 @@ def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> N
     async def copilotkit_agent_state(agent_id: str):
         return JSONResponse({"state": {}})
 
+    @fastapi_app.get(f"{prefix}/threads", include_in_schema=False)
+    async def copilotkit_threads(agentId: str = "default"):
+        return JSONResponse({"threads": []})
+
     @fastapi_app.options(f"{prefix}", include_in_schema=False)
     @fastapi_app.options(f"{prefix}/agent/{{agent_id}}/run", include_in_schema=False)
     @fastapi_app.options(f"{prefix}/agent/{{agent_id}}/state", include_in_schema=False)
     @fastapi_app.options(f"{prefix}/info", include_in_schema=False)
+    @fastapi_app.options(f"{prefix}/threads", include_in_schema=False)
     async def copilotkit_preflight():
         return JSONResponse({}, status_code=200)

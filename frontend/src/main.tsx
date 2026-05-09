@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { CopilotKit } from '@copilotkit/react-core';
 import App from './App';
 import './styles/index.css';
+import '@copilotkit/react-ui/styles.css';
 
 class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {

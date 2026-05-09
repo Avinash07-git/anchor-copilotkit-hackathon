@@ -3,7 +3,6 @@ import { useAGUIStream } from './hooks/useAGUIStream';
 import { renderLayout } from './components/Layouts';
 import CopilotKitProtocolProof from './components/CopilotKitProtocolProof';
 import FloatingChatDrawer from './components/FloatingChatDrawer';
-import { CopilotPopup } from '@copilotkit/react-ui';
 
 /**
  * Anchor — App shell.
@@ -190,17 +189,7 @@ export default function App() {
       {/* Reasoning ribbon — fixed thin bar above the chat pill */}
       <ReasoningRibbon steps={steps} />
 
-      {/* CopilotKit Generative UI popup — renders showDriftScore / showPatternAlert cards */}
-      <CopilotPopup
-        defaultOpen={false}
-        labels={{
-          title: 'Anchor AI',
-          initial: 'Ask about Tom, Helen, or Sarah — or describe what you noticed.',
-          placeholder: 'e.g. "Tom\'s ankles look swollen and he barely ate"',
-        }}
-      />
-
-      {/* Custom "Tell Anchor" drawer — posts to /api/chat → SSE dashboard rebuild */}
+      {/* "Tell Anchor" drawer — natural English → /api/chat → SSE dashboard rebuild */}
       <FloatingChatDrawer />
 
       {/* Protocol hooks — useCoAgent + useCopilotAction (invisible, no DOM) */}

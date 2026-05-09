@@ -197,11 +197,14 @@ async def _run_trigger(trigger_id: str) -> dict:
 
 @app.post("/demo/reset")
 async def demo_reset() -> dict:
-    _seed_demo_logs()
+    from app.mcp_tools.observation_parser import reset_store
+    reset_store()
+    for person_id in PEOPLE:
+        update_wellbeing_score(person_id)
     _state["plan_version"] += 1
     plan = build_plan(triggered_by="reset", plan_version=_state["plan_version"])
     _state["plan"] = plan
-    await broadcast("agent_step", {"text": "Resetting to clean baseline — all three YELLOW."})
+    await broadcast("agent_step", {"text": "Reset to clean baseline — all three GREEN."})
     await broadcast("plan_updated", plan)
     return plan
 

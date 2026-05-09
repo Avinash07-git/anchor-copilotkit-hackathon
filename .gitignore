@@ -54,3 +54,8 @@ backend/app/data/real/
 *_real.jpg
 ssn_*.txt
 hipaa_*.txt
+
+# Local-only IDE / dev runner config
+.claude/
+start-frontend.sh
+/tmp/anchor-*.log

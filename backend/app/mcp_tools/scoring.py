@@ -330,7 +330,12 @@ def score_cognitive_drift(person_id: str = "helen", today: int = 6) -> ScoreResu
     elif state == 'yellow':
         intensity = min(1.0, max(0.0, (drift_pct - 15) / 15.0))    # 15→0, 30→1
     else:
-        intensity = min(1.0, max(0.0, drift_pct / 15.0))           # 0→0, 15→1
+        # Within green, blend drift_pct AND raw weekly score so the sparkline
+        # dips gently as signals accumulate (even before crossing the threshold).
+        # This keeps the chart in step with the SignalTimeline events.
+        drift_intensity = min(1.0, max(0.0, drift_pct / 15.0))
+        raw_intensity = min(1.0, this_week_score / 12.0)  # 0/96→0, 12/96→1
+        intensity = max(drift_intensity, raw_intensity)
     wellbeing = state_to_wellbeing_score(state, intensity)
 
     active = [
