@@ -87,29 +87,6 @@ const SingleAlert = ({ components }: { components: PlanComponent[] }) => {
   );
 };
 
-// --- Dual risk -----------------------------------------------------------
-
-const DualRisk = ({ slots }: { slots: NonNullable<UIPlan['slots']> }) => (
-  <div className="grid gap-6 lg:grid-cols-2">
-    <div className="space-y-4">
-      <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-anchor-mist-400">
-        Patient
-      </h3>
-      {slots.left_panel.map((c, i) => (
-        <div key={i}>{renderComponent(c)}</div>
-      ))}
-    </div>
-    <div className="space-y-4">
-      <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-anchor-mist-400">
-        Caregiver
-      </h3>
-      {slots.right_panel.map((c, i) => (
-        <div key={i}>{renderComponent(c)}</div>
-      ))}
-    </div>
-  </div>
-);
-
 // --- Combined triage -----------------------------------------------------
 //
 // Design principle for this layout (the most-loaded view):
@@ -125,12 +102,34 @@ const PERSON_DISPLAY: Record<string, { name: string; role: string; emoji: string
   sarah: { name: 'Sarah', role: 'Caregiver wellbeing · You (42)',  emoji: '🌿' },
 };
 
-const stateRibbon = (color?: string): string => {
+// Stronger containment than a gradient ribbon — each person gets a real
+// bordered card with their state colour as the left rail. Everything that
+// belongs to that person is visually OWNED by their section. No more
+// floating-tile-on-bare-page confusion about whose signal is whose.
+const sectionChrome = (color?: string): string => {
   switch (color) {
-    case 'red':    return 'from-state-red/15 via-state-red/5 to-transparent';
-    case 'amber':  return 'from-state-amber/12 via-state-amber/4 to-transparent';
-    case 'yellow': return 'from-state-yellow/12 via-state-yellow/4 to-transparent';
-    default:       return 'from-anchor-mist-100 via-anchor-mist-50 to-transparent';
+    case 'red':    return 'border-state-red/35 bg-gradient-to-br from-state-red-soft via-white to-white shadow-[0_2px_24px_rgba(220,38,38,0.06)]';
+    case 'amber':  return 'border-state-amber/30 bg-gradient-to-br from-state-amber-soft via-white to-white shadow-[0_2px_24px_rgba(217,119,6,0.05)]';
+    case 'yellow': return 'border-state-yellow/30 bg-gradient-to-br from-state-yellow-soft via-white to-white shadow-[0_2px_24px_rgba(202,138,4,0.05)]';
+    default:       return 'border-anchor-mist-100 bg-white';
+  }
+};
+
+const sectionLeftRail = (color?: string): string => {
+  switch (color) {
+    case 'red':    return 'before:bg-state-red';
+    case 'amber':  return 'before:bg-state-amber';
+    case 'yellow': return 'before:bg-state-yellow';
+    default:       return 'before:bg-anchor-mist-200';
+  }
+};
+
+const headerEmojiTone = (color?: string): string => {
+  switch (color) {
+    case 'red':    return 'bg-state-red/12 text-state-red';
+    case 'amber':  return 'bg-state-amber/12 text-state-amber';
+    case 'yellow': return 'bg-state-yellow/12 text-state-yellow';
+    default:       return 'bg-anchor-cream-100 text-anchor-mist-400';
   }
 };
 
@@ -138,33 +137,46 @@ const PersonSection = ({
   personId,
   drift,
   cards,
+  index,
 }: {
   personId: string;
   drift?: PlanComponent;
   cards: PlanComponent[];
+  index: number;
 }) => {
   const meta = PERSON_DISPLAY[personId] ?? { name: personId, role: '', emoji: '•' };
   const color = (drift?.props as Record<string, unknown> | undefined)?.color as string | undefined;
   if (!drift && cards.length === 0) return null;
   return (
-    <section className="relative">
-      {/* Section banner so it's unmistakable which person we're reading. */}
-      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${stateRibbon(color)} px-5 py-3 mb-3 border border-anchor-mist-100/70`}>
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-display text-[20px] text-anchor-ink-900 leading-none tracking-tight">
-            <span className="mr-2" aria-hidden>{meta.emoji}</span>
+    <section
+      aria-label={`${meta.name}'s evidence`}
+      className={`relative rounded-3xl border ${sectionChrome(color)} ${sectionLeftRail(color)} before:content-[''] before:absolute before:left-0 before:top-6 before:bottom-6 before:w-[5px] before:rounded-r-full p-5 sm:p-6`}
+    >
+      {/* Section header. The number badge anchors urgency, the emoji+name
+          anchors WHO, and the role line anchors WHAT lens we're reading. */}
+      <header className="flex items-center gap-3 mb-5">
+        <span
+          aria-hidden
+          className={`inline-flex w-10 h-10 rounded-full items-center justify-center text-[18px] ${headerEmojiTone(color)}`}
+        >
+          {meta.emoji}
+        </span>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display text-[22px] text-anchor-ink-900 leading-none tracking-tight">
             {meta.name}
+            <span className="ml-2 text-[12px] uppercase tracking-[0.14em] font-semibold text-anchor-mist-400 align-middle">
+              · {meta.role}
+            </span>
           </h3>
-          <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-anchor-mist-400">
-            {meta.role}
-          </span>
         </div>
-      </div>
+        <span className="shrink-0 text-[10px] uppercase tracking-[0.16em] font-bold text-anchor-mist-400">
+          Person {index + 1} of 3
+        </span>
+      </header>
       <div className="space-y-4">
         {drift && <div>{renderComponent(drift)}</div>}
         <div className="grid gap-4 lg:grid-cols-2">
           {cards.map((c, i) => {
-            // Wide cards take both columns; narrow ones share a row.
             const wide =
               c.type === 'PatternAlertCard' ||
               c.type === 'ContributorMap' ||
@@ -188,8 +200,8 @@ const CombinedTriage = ({ components }: { components: PlanComponent[] }) => {
     (c) => c.type !== 'CombinedTriageView' && c.type !== 'DriftScoreCard',
   );
 
-  // Group supporting cards by person_id. The plan_builder emits them in
-  // urgency order; we preserve that order via a Map (insertion-order keyed).
+  // Group supporting cards by person_id, preserving the urgency order the
+  // backend put them in.
   const byPerson = new Map<string, PlanComponent[]>();
   for (const c of supporting) {
     const pid = (c.props as Record<string, unknown>).person_id as string | undefined;
@@ -198,25 +210,30 @@ const CombinedTriage = ({ components }: { components: PlanComponent[] }) => {
     byPerson.get(pid)!.push(c);
   }
 
-  // Drift cards keyed by person for the section header lookup.
   const driftFor: Record<string, PlanComponent | undefined> = {};
   for (const d of drifts) {
     const pid = (d.props as Record<string, unknown>).person_id as string;
     driftFor[pid] = d;
   }
 
+  const personOrder = Array.from(byPerson.keys());
+
   return (
-    <div className="space-y-8">
-      {/* Executive summary at top */}
+    <div className="space-y-6">
+      {/* Executive summary stays at top — the at-a-glance triage. */}
       {triage && <div>{renderComponent(triage)}</div>}
 
-      {/* Per-person narrative sections, in urgency order from the backend */}
-      {Array.from(byPerson.keys()).map((pid) => (
+      {/* Each person gets a fully-contained section. Vertical stack so each
+          DriftScoreCard gets the FULL dashboard width for its sparkline
+          (the previous bug: dual_risk gave it a 560px column which forced
+          the wide horizontal score row to overflow onto the page bg). */}
+      {personOrder.map((pid, i) => (
         <PersonSection
           key={pid}
           personId={pid}
           drift={driftFor[pid]}
           cards={byPerson.get(pid) ?? []}
+          index={i}
         />
       ))}
     </div>
@@ -231,8 +248,10 @@ export function renderLayout(plan: UIPlan) {
     case 'single_alert':     return <SingleAlert components={plan.components} />;
     case 'combined_triage':  return <CombinedTriage components={plan.components} />;
     case 'dual_risk':
-      if (!plan.slots) return <SingleAlert components={plan.components} />;
-      return <DualRisk slots={plan.slots} />;
+      // dual_risk is deprecated — the 2-column split forced wide cards to
+      // overflow their containers. Any incoming dual_risk plan now renders
+      // through the same per-person sectioned layout as combined_triage.
+      return <CombinedTriage components={plan.components} />;
     default:
       return (
         <pre className="text-xs font-mono bg-anchor-cream-100 p-3 rounded">

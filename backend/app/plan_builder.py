@@ -441,11 +441,13 @@ def build_plan(triggered_by: str | None = None, plan_version: int = 1) -> dict[s
     n = len(matches)
     if n == 0:
         return _calm_dashboard(scores, plan_version, triggered_by)
-    if n == 3:
+    if n >= 2:
+        # Whether 2 or 3 patterns crossed: the user wants the SAME experience
+        # — each person's full evidence in their own contained section. The
+        # old dual_risk layout split the dashboard into two narrow columns,
+        # which forced the wide DriftScoreCard to overflow its container.
+        # combined_triage is the right tool for any multi-pattern view.
         return _combined_triage(scores, matches, plan_version, triggered_by)
-    if n == 2 and "sarah" in matches:
-        patient_id = next(p for p in matches if p != "sarah")
-        return _dual_risk(scores, matches, patient_id, plan_version, triggered_by)
     if n == 1:
         person_id = next(iter(matches))
         return _single_alert(scores, matches, person_id, plan_version, triggered_by)
