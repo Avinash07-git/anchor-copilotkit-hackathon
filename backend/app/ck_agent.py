@@ -28,6 +28,17 @@ from copilotkit import CopilotKitRemoteEndpoint, LangGraphAGUIAgent
 from copilotkit.integrations.fastapi import add_fastapi_endpoint
 from copilotkit.langgraph import CopilotKitState, copilotkit_emit_state
 
+# --- Monkey-patch: LangGraphAGUIAgent.dict_repr() calls super().dict_repr()
+# but LangGraphAgent (its parent) inherits from object, not Agent, so the
+# method doesn't exist. Patch it to return the correct shape directly.
+def _fixed_agui_dict_repr(self):
+    return {
+        "name": self.name,
+        "description": self.description or "",
+        "type": "langgraph_agui",
+    }
+LangGraphAGUIAgent.dict_repr = _fixed_agui_dict_repr
+
 
 # ---------------------------------------------------------------------------
 # State
