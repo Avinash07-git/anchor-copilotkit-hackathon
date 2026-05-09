@@ -36,6 +36,10 @@ class DriftScoreCardProps(BaseModel):
     trend: Literal["up", "down", "flat"] = "flat"
     one_liner: str  # very short caption ("Calm and stable" / "Worth watching")
     last_updated: datetime = Field(default_factory=datetime.utcnow)
+    # New post-scoring-engine fields:
+    state: Literal["green", "yellow", "amber", "red"] = "green"
+    raw_score_label: str = ""  # instrument-native, e.g. "11 / 24"
+    instrument: str = ""  # which instrument computed this
 
 
 class SignalEntry(BaseModel):
@@ -55,6 +59,11 @@ class PatternAlertCardProps(BaseModel):
     signals: list[SignalEntry]
     suggested_actions: list[str]
     disclaimer: str  # mandatory safer-language disclaimer
+    # New, post-scoring-engine fields:
+    citation: str = ""  # peer-reviewed instrument citation (always shown)
+    raw_score_label: str = ""  # e.g. "11 / 24" or "42 / 100 (14-day)"
+    rebuild_reason: str = ""  # plain-English summary of why rebuild fired
+    instrument: str = ""  # "physical_drift" | "cognitive_drift" | "caregiver_burden"
 
 
 class ContributorEntry(BaseModel):
