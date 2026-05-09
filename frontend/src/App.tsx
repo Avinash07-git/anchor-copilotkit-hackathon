@@ -151,8 +151,19 @@ export default function App() {
           </div>
         )}
         {livePlan ? (
-          <div className="animate-[fadeIn_.4s_ease-out]" key={livePlan.meta?.plan_version ?? 'v0'}>
-            {renderLayout(livePlan)}
+          <div className="relative" key={livePlan.meta?.plan_version ?? 'v0'}>
+            {/* The Gen-UI proof moment: a sweeping shimmer rides across the
+                dashboard each time the agent rebuilds the layout, so the
+                judge SEES the agent restructure (not just numbers tick). */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 -top-2 h-[3px] overflow-hidden rounded-full"
+            >
+              <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-anchor-indigo-500 to-transparent animate-rebuildSweep" />
+            </div>
+            <div className="animate-fadeIn">
+              {renderLayout(livePlan)}
+            </div>
           </div>
         ) : (
           <EmptyState />

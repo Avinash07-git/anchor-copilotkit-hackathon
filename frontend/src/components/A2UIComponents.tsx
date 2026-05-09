@@ -108,41 +108,41 @@ export const DriftScoreCard = (p: DriftScoreCardProps) => {
       className={`group relative rounded-2xl border bg-white p-5 sm:p-6 transition-all hover:shadow-lift ${cardChrome(p.color)}`}
     >
       <div className="flex flex-col md:flex-row md:items-center gap-5 md:gap-7">
-        {/* Identity column */}
-        <div className="flex items-center gap-4 md:w-[220px] md:flex-shrink-0">
+        {/* Identity column — the people are the product, so they get real estate. */}
+        <div className="flex items-center gap-4 md:w-[260px] md:flex-shrink-0">
           <div
-            className={`relative w-14 h-14 rounded-full grid place-items-center font-semibold text-base ring-4 ${accent.ring} ${accent.bg} ${accent.fg} flex-shrink-0`}
+            className={`relative w-20 h-20 md:w-[88px] md:h-[88px] rounded-full grid place-items-center font-semibold text-[22px] md:text-[26px] ring-[5px] ${accent.ring} ${accent.bg} ${accent.fg} flex-shrink-0 shadow-sm`}
             aria-hidden
           >
             {initialsFor(p.display_name)}
             <span
-              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white grid place-items-center text-[11px] shadow-sm border border-anchor-mist-100"
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white grid place-items-center text-[13px] shadow-md border border-anchor-mist-100"
               title={p.lens_label}
             >
               {lensIcon(p.lens)}
             </span>
           </div>
           <div className="min-w-0">
-            <h3 className="text-[18px] font-semibold text-anchor-ink-900 leading-tight">
+            <h3 className="font-display text-[26px] md:text-[28px] font-semibold text-anchor-ink-900 leading-[1.05] tracking-tight">
               {p.display_name.split(' ')[0]}
-              <span className="text-anchor-mist-400 font-normal text-sm ml-1.5">· {p.age}</span>
+              <span className="text-anchor-mist-400 font-normal text-base ml-2">· {p.age}</span>
             </h3>
-            <p className="text-[10px] text-anchor-mist-400 uppercase tracking-[0.12em] font-semibold mt-1">
+            <p className="text-[11px] text-anchor-mist-400 uppercase tracking-[0.14em] font-semibold mt-1.5">
               {p.lens_label.replace(/\s*wellbeing$/i, '')}
             </p>
           </div>
         </div>
 
-        {/* Score column */}
-        <div className="flex flex-col md:w-[180px] md:flex-shrink-0 md:border-l md:border-anchor-mist-100/70 md:pl-7">
+        {/* Score column — cockpit instrument. Tabular, slashed-zero, big. */}
+        <div className="flex flex-col md:w-[200px] md:flex-shrink-0 md:border-l md:border-anchor-mist-100/70 md:pl-7">
           <div className="flex items-baseline gap-1.5">
-            <span className="font-display text-[48px] md:text-[56px] font-semibold tabular-nums text-anchor-ink-900 leading-none tracking-tight">
+            <span className="font-cockpit text-[64px] md:text-[78px] font-semibold text-anchor-ink-900 leading-none">
               {p.score}
             </span>
-            <span className="text-anchor-mist-400 text-xs font-mono">/ 100</span>
+            <span className="text-anchor-mist-400 text-sm font-mono">/ 100</span>
             {p.trend !== 'flat' && (
               <span
-                className={`ml-1 inline-flex items-center text-[16px] ${arrow.cls}`}
+                className={`ml-1 inline-flex items-center text-[18px] ${arrow.cls}`}
                 aria-label={arrow.label}
                 title={arrow.label}
               >
@@ -150,15 +150,15 @@ export const DriftScoreCard = (p: DriftScoreCardProps) => {
               </span>
             )}
           </div>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2.5 flex items-center gap-2">
             <span
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colorToBadge(p.color)}`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${colorToBadge(p.color)}`}
             >
               <span aria-hidden className="text-[8px]">{colorIcon(p.color)}</span>
               {colorLabel(p.color)}
             </span>
             {caption && (
-              <span className={`text-[11px] font-medium ${captionTone(p.color)}`}>
+              <span className={`text-[12px] font-medium ${captionTone(p.color)}`}>
                 {caption}
               </span>
             )}
@@ -181,7 +181,7 @@ export const DriftScoreCard = (p: DriftScoreCardProps) => {
             data={series}
             stroke={stroke}
             fill={fill}
-            height={88}
+            height={140}
             ariaLabel={`${p.display_name} 14-day wellbeing trend, currently ${p.score} out of 100`}
           />
         </div>
@@ -204,6 +204,17 @@ const severityLeftBorder = (color: string): string => {
   }
 };
 
+// Background tint for the alert body — makes red alerts FEEL like alarms
+// (not just text on cream). Subtle on amber/yellow, more present on red.
+const severityBgTint = (color: string): string => {
+  switch (color) {
+    case 'red':    return 'bg-gradient-to-br from-red-50/90 via-white to-white border-red-100';
+    case 'amber':  return 'bg-gradient-to-br from-amber-50/70 via-white to-white border-amber-100';
+    case 'yellow': return 'bg-gradient-to-br from-yellow-50/50 via-white to-white border-yellow-100';
+    default:       return '';
+  }
+};
+
 const severityIconColor = (color: string): string => {
   switch (color) {
     case 'red':    return 'text-state-red';
@@ -213,8 +224,12 @@ const severityIconColor = (color: string): string => {
   }
 };
 
-export const PatternAlertCard = (p: PatternAlertCardProps) => (
-  <Card className={`border-l-4 ${severityLeftBorder(p.severity_color)}`}>
+export const PatternAlertCard = (p: PatternAlertCardProps) => {
+  const isCritical = p.severity_color === 'red';
+  return (
+    <Card
+      className={`border-l-[6px] ${severityLeftBorder(p.severity_color)} ${severityBgTint(p.severity_color)} ${isCritical ? 'alert-pulse' : ''}`}
+    >
     <CardHeader
       icon={colorIcon(p.severity_color)}
       title={p.title}
@@ -269,7 +284,8 @@ export const PatternAlertCard = (p: PatternAlertCardProps) => (
       Source · {p.citation}
     </p>
   </Card>
-);
+  );
+};
 
 // --- TalkingPointsCard ---------------------------------------------------
 
@@ -296,15 +312,22 @@ export const ContributorMap = (p: ContributorMapProps) => (
       title={p.title}
       subtitle={`${p.this_week_count} observations this week — usually around ${p.baseline_rate_per_month}/month. That's ${p.acceleration_factor}× the usual rate.`}
     />
-    <div className="grid sm:grid-cols-2 gap-2.5">
+    <div className="grid sm:grid-cols-2 gap-3">
       {p.contributors.map((c, i) => (
-        <div key={i} className="bg-anchor-cream-100 rounded-xl p-3.5 text-[13px]">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold text-anchor-ink-600">{c.observer_display}</span>
-            <span className="text-[11px] text-anchor-mist-400">{friendlyDayLabel(c.day_label)}</span>
+        <div
+          key={i}
+          className="relative bg-gradient-to-br from-anchor-cream-100 via-anchor-cream-50 to-white rounded-xl p-4 text-[13px] shadow-sm border border-anchor-mist-100/70 hover:shadow-md transition-shadow"
+        >
+          <span
+            aria-hidden
+            className="absolute top-2 left-3 text-anchor-mist-200 font-display text-[28px] leading-none select-none"
+          >“</span>
+          <div className="flex items-center justify-between gap-2 pl-5">
+            <span className="font-semibold text-anchor-ink-900 text-[14px]">{c.observer_display}</span>
+            <span className="text-[11px] text-anchor-mist-400 font-medium">{friendlyDayLabel(c.day_label)}</span>
           </div>
-          <p className="text-[11px] text-anchor-mist-400 mt-0.5">{c.observer_where}</p>
-          <p className="text-anchor-ink-600 mt-2 leading-snug">"{c.note}"</p>
+          <p className="text-[11px] text-anchor-mist-400 mt-0.5 pl-5 italic">{c.observer_where}</p>
+          <p className="text-anchor-ink-600 mt-2 leading-snug pl-5">{c.note}”</p>
         </div>
       ))}
     </div>

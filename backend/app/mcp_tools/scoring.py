@@ -103,21 +103,33 @@ def score_physical_drift(person_id: str = "tom", today: int = 11) -> ScoreResult
     window_entries = [e for e in entries if today - 6 <= e["day"] <= today]
     flat = [s for s in _flatten_signals(window_entries) if s["signal"].startswith("S")]
 
-    # Max severity per domain in the window
+    # Max severity per domain in the window, with a recurrence boost so
+    # repeated observations of the same symptom escalate (not dedupe).
     by_domain: dict[str, dict] = {}
+    counts: dict[str, int] = defaultdict(int)
     for s in flat:
         d = s["signal"]
+        counts[d] += 1
         if d not in by_domain or s["severity"] > by_domain[d]["severity"]:
             by_domain[d] = s
 
-    raw = sum(s["severity"] for s in by_domain.values())
+    # Effective severity per domain = base_severity * recurrence_boost,
+    # capped at the framework's max severity (3) so we stay honest to the
+    # source. The boost lets 3 mild observations carry the same weight as
+    # one moderate one — which is how real symptom diaries work.
+    weighted_severity: dict[str, float] = {}
+    for d, s in by_domain.items():
+        boost = _recurrence_boost(counts[d])
+        weighted_severity[d] = min(3.0, s["severity"] * boost)
+
+    raw = sum(weighted_severity.values())
     state = _physical_state(raw)
 
     # Rebuild triggers — only count domains at moderate-or-worse severity (≥2)
     # for the safety overrides. A single "a bit heavy" mention shouldn't be
     # enough to fire the high-risk combo by itself.
     domains_active = list(by_domain.keys())
-    moderate_or_worse = {d for d, s in by_domain.items() if s["severity"] >= 2}
+    moderate_or_worse = {d for d, sv in weighted_severity.items() if sv >= 2}
     high_risk_combo = ("S7_missed_medication" in moderate_or_worse) and (
         "S3_edema" in moderate_or_worse or "S1_dyspnea" in moderate_or_worse
     )
@@ -211,16 +223,43 @@ def _week_of(day: int, today: int) -> int:
     return (today - day) // 7
 
 
+def _recurrence_boost(occurrence_count: int) -> float:
+    """Multiplier for repeated observations of the same domain.
+
+    Real caregivers don't note 'mom forgot her keys' four times when nothing
+    is wrong — each repeat is reinforcing the pattern. The math should reflect
+    that. 1 obs = 1.0× (no boost). 4+ obs = 2.0× (capped). The growth is
+    sub-linear so a single observation can't masquerade as a flood.
+    """
+    n = max(1, occurrence_count)
+    return min(2.0, 1.0 + 0.34 * (n - 1))
+
+
 def _weekly_npi_score(week_entries: list[dict]) -> tuple[float, dict[str, dict]]:
-    """Per-week NPI score. Returns (score, by_domain_max)."""
+    """Per-week NPI score. Returns (score, by_domain_max).
+
+    Domain score = max(freq × severity) for that domain in the week, then
+    multiplied by a recurrence boost so repeated observations of the same
+    domain register as escalating concern (not deduplicated to a single max).
+    """
     flat = [s for s in _flatten_signals(week_entries) if s["signal"].startswith("C")]
     by_domain: dict[str, dict] = {}
+    counts: dict[str, int] = defaultdict(int)
     for s in flat:
+        counts[s["signal"]] += 1
         domain_score = s["frequency"] * s["severity"]
         s_copy = {**s, "domain_score": domain_score}
         if s["signal"] not in by_domain or domain_score > by_domain[s["signal"]]["domain_score"]:
             by_domain[s["signal"]] = s_copy
-    return float(sum(d["domain_score"] for d in by_domain.values())), by_domain
+
+    # Apply recurrence boost per domain
+    weighted_total = 0.0
+    for sig, dom in by_domain.items():
+        boost = _recurrence_boost(counts[sig])
+        dom["recurrence_count"] = counts[sig]
+        dom["weighted_score"] = round(dom["domain_score"] * boost, 2)
+        weighted_total += dom["weighted_score"]
+    return weighted_total, by_domain
 
 
 def _cognitive_state_from_drift(drift_pct: float) -> State:

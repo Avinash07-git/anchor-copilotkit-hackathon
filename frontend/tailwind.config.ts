@@ -72,6 +72,21 @@ const config: Config = {
         'indigo-gradient': 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
         'coral-gradient':  'linear-gradient(135deg, #fb7185 0%, #f43f5e 100%)',
       },
+      keyframes: {
+        fadeIn: {
+          '0%':   { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        rebuildSweep: {
+          '0%':   { opacity: '0', transform: 'translateX(-100%)' },
+          '40%':  { opacity: '1' },
+          '100%': { opacity: '0', transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        fadeIn:        'fadeIn 0.45s ease-out',
+        rebuildSweep:  'rebuildSweep 1.1s ease-out',
+      },
     },
   },
   plugins: [],
