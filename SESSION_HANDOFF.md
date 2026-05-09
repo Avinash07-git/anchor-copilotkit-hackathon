@@ -6,7 +6,17 @@
 
 ## 🎯 Current status (as of this commit)
 
-**The full end-to-end demo runs locally.** Backend, agent, scoring engine, all 9 components, all 4 layouts, AG-UI streaming, and the four demo triggers (`uc1` / `uc2` / `uc3` / `reset` / `combined`) are wired up and validated.
+**The full end-to-end demo runs locally with two entry surfaces.** Backend, agent, scoring engine, all 9 components, all 4 layouts, AG-UI streaming, the four scripted demo triggers, **and the new CopilotKit-style chat surface** are wired up and validated.
+
+### What landed in the CopilotKit pass (May 8 evening)
+- `<CopilotKit>` provider wraps the React tree (`frontend/src/main.tsx`)
+- `BedsideChat` panel — natural-language entry, posts to `/api/chat` (`frontend/src/components/BedsideChat.tsx`)
+- `POST /api/chat` — parses free text → infers target person → logs observation → recomputes plan → broadcasts via SSE
+- `POST /api/approval` + interactive `ApprovalPrompt` — implements the CopilotKit `renderAndWait` HITL pattern natively (no Node runtime needed on demo day)
+- `POST /api/copilotkit` — no-op stub so the provider initialises cleanly
+- `@copilotkit/react-core` + `@copilotkit/react-ui` installed in `frontend/package.json`
+
+We deliberately did **not** stand up the Node-side CopilotKit runtime; FastAPI is the single source of truth and the scripted `/demo/*` buttons remain the offline-safe fallback (same role `plan_builder.py` plays for the agent).
 
 We are **not** waiting on a build. We are waiting on:
 1. Avinash to get a Gemini API key from <https://aistudio.google.com/app/apikey> (free tier is fine)
@@ -73,10 +83,15 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.ui_plan import UIPlan
 c = TestClient(app)
-for trig in ['uc1','uc2','uc3','reset','combined']:
-    p = '/demo/reset' if trig=='reset' else f'/demo/{trig}'
-    UIPlan(**c.post(p).json())  # validates
-    print(f'OK {p}')
+with c:  # triggers lifespan seed
+    for trig in ['uc1','uc2','uc3','reset','combined']:
+        p = '/demo/reset' if trig=='reset' else f'/demo/{trig}'
+        UIPlan(**c.post(p).json())
+        print(f'OK {p}')
+    # CopilotKit chat surface
+    r = c.post('/api/chat', json={'message': \"Tom's ankles are really swollen and he barely ate\", 'observer': 'sarah'})
+    UIPlan(**r.json()['plan'])
+    print(f'OK /api/chat -> {r.json()[\"plan\"][\"layout\"]}')
 "
 ```
 

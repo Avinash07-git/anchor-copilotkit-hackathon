@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAGUIStream } from './hooks/useAGUIStream';
 import { renderLayout } from './components/Layouts';
+import BedsideChat from './components/BedsideChat';
 
 /**
  * Bedside — App shell.
@@ -124,7 +125,9 @@ export default function App() {
           )}
         </div>
 
-        <aside className="lg:sticky lg:top-32 lg:self-start">
+        <aside className="lg:sticky lg:top-32 lg:self-start space-y-4">
+          <BedsideChat />
+
           <div className="rounded-2xl border border-bedside-gray-50 bg-white shadow-sm p-4">
             <h2 className="text-sm font-semibold text-bedside-gray-160 flex items-center gap-2">
               <span aria-hidden>🤖</span>

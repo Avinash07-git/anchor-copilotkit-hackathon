@@ -25,6 +25,8 @@ dist/
 .vite/
 *.log
 .DS_Store
+*.tsbuildinfo
+frontend/src/**/*.js
 
 # Env
 .env

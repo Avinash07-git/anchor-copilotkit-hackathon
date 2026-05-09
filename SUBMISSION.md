@@ -26,9 +26,9 @@ Why this is generative UI:
 ## Protocols used
 
 - **A2UI** — `UIPlan` schema (10 component types, 4 layouts) emitted by the agent and validated by Pydantic before going over the wire.
-- **AG-UI** — Server-Sent Events stream of `agent_step` + `plan_updated` events; the frontend's reasoning panel narrates the agent live.
+- **AG-UI** — Server-Sent Events stream of `agent_step` + `plan_updated` events; the frontend's reasoning panel narrates the agent live. The Python side uses `pydantic-ai-slim[ag-ui]`-shaped event payloads (the official Pydantic AI ↔ AG-UI bridge).
 - **MCP** — 8 MCP tools for parsing, scoring, pattern matching, support lookup, and talking-points drafting. The scoring tools wrap three peer-reviewed instruments (HF Symptom Monitoring Framework, NPI, ZBI-12).
-- **CopilotKit** — Frontend adapter pattern (the `useAGUIStream` hook is the swap point for the official starter kit when it lands).
+- **CopilotKit** — The React frontend is wrapped in `<CopilotKit>` (from `@copilotkit/react-core`) with `@copilotkit/react-ui` styles loaded. The `BedsideChat` panel is the natural-language entry surface that drives the agent: caregivers type in plain English, FastAPI handles the chat round-trip at `/api/chat`, and the dashboard re-renders via the existing AG-UI SSE channel. The interactive `ApprovalPrompt` component implements CopilotKit's `renderAndWait` human-in-the-loop pattern — the caregiver must approve before any draft message "ships". Per the official CopilotKit docs (May 2026), Pydantic AI is a first-party supported backend.
 
 ## Team
 Avinash — solo build.
@@ -64,6 +64,7 @@ The handbook explicitly allows pre-existing code provided we're transparent abou
 - All 9 React A2UI component renderers (`frontend/src/components/A2UIComponents.tsx`)
 - All 4 layout dispatchers (`frontend/src/components/Layouts.tsx`)
 - Live demo trigger endpoints with narrated agent steps (`backend/app/main.py /demo/*`)
+- **CopilotKit integration** — `<CopilotKit>` provider in `main.tsx`, conversational `BedsideChat` panel (`frontend/src/components/BedsideChat.tsx`), `/api/chat` natural-language endpoint, and `/api/approval` HITL endpoint that powers the interactive `ApprovalPrompt` (CopilotKit `renderAndWait` pattern)
 - Dashboard composition + on-stage polish + demo video
 
 The science (the three peer-reviewed instruments) is what makes Bedside not-a-toy. The 6-hour event window is where it became a generative-UI experience.
@@ -73,7 +74,7 @@ The science (the three peer-reviewed instruments) is what makes Bedside not-a-to
 ## What to demo on stage (2:30, working code only)
 
 1. **0:00–0:25** — Open dashboard. Three calm `DriftScoreCard`s. *"Bedside is the intelligent layer that was always missing. The Reynolds family — Tom 68, Helen 84, Sarah 42 — all calm right now."*
-2. **0:25–0:55** — Click `① Tom — slow slide`. Watch the AG-UI panel narrate `parse_observation_log → S3 edema (severe)…`. Dashboard re-composes to `single_alert` with the PatternAlertCard citing PMC9070923. *"Same dashboard, different layout, because the agent decided so."*
-3. **0:55–1:35** — Click `② Helen — silent decline`. Four observers' notes flow in. Dashboard adds the `ContributorMap` with the 9× drift number. *"No single person saw this. Bedside did. The math is the validated NPI multi-observer aggregation."*
-4. **1:35–2:10** — Click `③ Sarah — breaking point`. Z10 hopelessness override fires. Dashboard switches to `combined_triage`. *"The average says she's fine. The validated single-signal override says watch carefully. Three different lenses, three different instruments, one composed view."*
-5. **2:10–2:30** — Pause. *"Six hours. Three peer-reviewed instruments. A dashboard that rebuilds itself. This is what an agentic interface looks like."*
+2. **0:25–0:55** — In the **`Tell Bedside` chat panel** (CopilotKit surface), Sarah types *"Tom's ankles are really swollen and he barely ate anything."* Watch the AG-UI panel narrate `parse_observation_log → S3 edema (severe)…`. Dashboard re-composes to `single_alert` with the PatternAlertCard citing PMC9070923. *"Same dashboard, different layout, because the agent decided so — from one sentence of plain English."*
+3. **0:55–1:35** — Click `② Helen — silent decline` (multi-observer is easier as a button than typing four notes live). Four observers' notes flow in. Dashboard adds the `ContributorMap` with the 9× drift number. *"No single person saw this. Bedside did. The math is the validated NPI multi-observer aggregation."*
+4. **1:35–2:10** — Back to chat. Sarah types *"I really don't know how much longer I can do this."* Z10 hopelessness override fires. Dashboard switches to `combined_triage`. The `ApprovalPrompt` materialises with a draft message to her brother — click **Send it** to demonstrate the CopilotKit `renderAndWait` HITL beat. *"The average says she's fine. The validated single-signal override says watch carefully. And Bedside never ships a message without you."*
+5. **2:10–2:30** — Pause. *"Six hours. Three peer-reviewed instruments. A dashboard that rebuilds itself from plain English. This is what an agentic interface looks like."*

@@ -3,7 +3,11 @@
 // Each component is a small, presentation-only React function. All state
 // + data flows top-down from the UIPlan emitted by the agent. The renderer
 // in App.tsx switches on component.type and mounts the matching one here.
+//
+// One exception: ApprovalPrompt holds local UI state to track the
+// human-in-the-loop decision (CopilotKit's renderAndWait pattern).
 
+import { useState } from 'react';
 import {
   ApprovalPromptProps,
   CombinedTriageViewProps,
@@ -253,26 +257,85 @@ export const QuickActionCard = (p: QuickActionCardProps) => (
 );
 
 // --- ApprovalPrompt ------------------------------------------------------
+// HITL — agent renders a draft, caregiver approves/edits/declines, decision
+// is POSTed back to FastAPI which narrates it into the AG-UI step stream.
+// This is the renderAndWait pattern from CopilotKit — implemented natively
+// here so the demo doesn't depend on the CopilotKit Node runtime being up.
 
-export const ApprovalPrompt = (p: ApprovalPromptProps) => (
-  <Card className="border-l-4 border-l-bedside-spark-100">
-    <CardHeader icon="✋" title={p.prompt} subtitle="Human-in-the-loop — Bedside never sends without you" />
-    <blockquote className="bg-bedside-gray-10 rounded-lg p-3 text-sm text-bedside-gray-160 italic whitespace-pre-line">
-      {p.draft_preview}
-    </blockquote>
-    <div className="flex flex-wrap gap-2 mt-4">
-      <button className="px-4 py-2 rounded-lg bg-bedside-blue-100 text-white font-semibold text-sm hover:bg-bedside-blue-110 focus:outline-none focus:ring-4 focus:ring-bedside-blue-100/40">
-        {p.approve_label}
-      </button>
-      <button className="px-4 py-2 rounded-lg bg-white border border-bedside-gray-50 text-bedside-gray-160 font-semibold text-sm hover:bg-bedside-gray-10 focus:outline-none focus:ring-4 focus:ring-bedside-blue-100/40">
-        {p.edit_label}
-      </button>
-      <button className="px-4 py-2 rounded-lg text-bedside-gray-100 font-semibold text-sm hover:text-bedside-gray-160 focus:outline-none focus:ring-2 focus:ring-bedside-gray-100/40">
-        {p.decline_label}
-      </button>
-    </div>
-  </Card>
-);
+type ApprovalState = 'pending' | 'approved' | 'editing' | 'declined' | 'error';
+
+const APPROVAL_STATE_COPY: Record<Exclude<ApprovalState, 'pending'>, { icon: string; text: string; tone: string }> = {
+  approved: { icon: '✅', text: 'Sent. Bedside will let you know when there’s a reply.', tone: 'text-bedside-green-100' },
+  editing:  { icon: '✏️', text: 'Opening the draft for you to revise before sending.',  tone: 'text-bedside-blue-100' },
+  declined: { icon: '🚫', text: 'Got it — nothing was sent.',                            tone: 'text-bedside-gray-100' },
+  error:    { icon: '⚠️', text: 'Couldn’t reach the agent. Try again in a moment.',     tone: 'text-bedside-red-100' },
+};
+
+export const ApprovalPrompt = (p: ApprovalPromptProps) => {
+  const [state, setState] = useState<ApprovalState>('pending');
+  const [busy, setBusy] = useState(false);
+
+  const decide = async (decision: 'approve' | 'edit' | 'decline') => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/approval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, prompt: p.prompt }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setState(decision === 'approve' ? 'approved' : decision === 'edit' ? 'editing' : 'declined');
+    } catch {
+      setState('error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resolved = state !== 'pending' ? APPROVAL_STATE_COPY[state] : null;
+
+  return (
+    <Card className="border-l-4 border-l-bedside-spark-100">
+      <CardHeader icon="✋" title={p.prompt} subtitle="Human-in-the-loop — Bedside never sends without you" />
+      <blockquote className="bg-bedside-gray-10 rounded-lg p-3 text-sm text-bedside-gray-160 italic whitespace-pre-line">
+        {p.draft_preview}
+      </blockquote>
+      {resolved ? (
+        <p className={`mt-4 text-sm font-semibold ${resolved.tone}`}>
+          <span aria-hidden>{resolved.icon}</span> {resolved.text}
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2 mt-4">
+          <button
+            type="button"
+            onClick={() => decide('approve')}
+            disabled={busy}
+            className="px-4 py-2 rounded-lg bg-bedside-blue-100 text-white font-semibold text-sm hover:bg-bedside-blue-110 focus:outline-none focus:ring-4 focus:ring-bedside-blue-100/40 disabled:opacity-50"
+          >
+            {p.approve_label}
+          </button>
+          <button
+            type="button"
+            onClick={() => decide('edit')}
+            disabled={busy}
+            className="px-4 py-2 rounded-lg bg-white border border-bedside-gray-50 text-bedside-gray-160 font-semibold text-sm hover:bg-bedside-gray-10 focus:outline-none focus:ring-4 focus:ring-bedside-blue-100/40 disabled:opacity-50"
+          >
+            {p.edit_label}
+          </button>
+          <button
+            type="button"
+            onClick={() => decide('decline')}
+            disabled={busy}
+            className="px-4 py-2 rounded-lg text-bedside-gray-100 font-semibold text-sm hover:text-bedside-gray-160 focus:outline-none focus:ring-2 focus:ring-bedside-gray-100/40 disabled:opacity-50"
+          >
+            {p.decline_label}
+          </button>
+        </div>
+      )}
+    </Card>
+  );
+};
 
 // --- CombinedTriageView --------------------------------------------------
 
