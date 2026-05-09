@@ -69,7 +69,7 @@ export default function FloatingChatDrawer() {
         aria-controls="anchor-chat-panel"
       >
         <span
-          className={`relative grid place-items-center-6 ${open ? '' : 'animate-pulse'}`}
+          className={`relative grid place-items-center w-6 h-6 ${open ? '' : 'animate-pulse'}`}
           aria-hidden
         >
           {open ? (
