@@ -38,6 +38,46 @@ from app.mcp_tools.support import draft_talking_points, find_local_support
 # --- Component builders ---------------------------------------------------
 
 
+def _active_signals_for(person_id: str, today_window_days: int = 7) -> list[str]:
+    """Human-readable signal chips for the DriftScoreCard.
+
+    Returns the up-to-3 most recent distinct signal *labels* observed for
+    this person in the recent window. Empty list = nothing currently
+    contributing (calm). This is what answers the user's natural question:
+    'why is Tom at 56?' — inline, no scroll required.
+    """
+    from app.mcp_tools.scoring import (
+        CAREGIVER_DOMAIN_LABELS,
+        COGNITIVE_DOMAIN_LABELS,
+        PHYSICAL_DOMAIN_LABELS,
+        today_for,
+    )
+
+    label_map = {
+        "tom":   PHYSICAL_DOMAIN_LABELS,
+        "helen": COGNITIVE_DOMAIN_LABELS,
+        "sarah": CAREGIVER_DOMAIN_LABELS,
+    }.get(person_id, {})
+    today = today_for(person_id)
+    cutoff = today - today_window_days
+
+    entries = list(_LOG_STORE.get(person_id, []))
+    # Most-recent first
+    entries.sort(key=lambda e: e["day"], reverse=True)
+
+    seen: list[str] = []
+    for e in entries:
+        if e["day"] < cutoff or e["day"] > today:
+            continue
+        for s in e.get("signals", []):
+            label = label_map.get(s["signal"])
+            if label and label not in seen:
+                seen.append(label)
+                if len(seen) >= 3:
+                    return seen
+    return seen
+
+
 def _drift_card(person_id: str, score_result: dict) -> dict:
     """One DriftScoreCard for the dashboard's standing row."""
     person = PEOPLE[person_id]
@@ -65,6 +105,7 @@ def _drift_card(person_id: str, score_result: dict) -> dict:
             "state": state,
             "raw_score_label": score_result["raw_score_label"],
             "instrument": score_result["instrument"],
+            "active_signals": _active_signals_for(person_id),
         },
     }
 
@@ -116,6 +157,7 @@ def _talking_points_card(person_id: str, audience: str) -> dict:
     return {
         "type": "TalkingPointsCard",
         "props": {
+            "person_id": person_id,
             "title": f"What to share with {audience}",
             "audience": audience,
             "bullets": result["bullets"],
@@ -189,6 +231,7 @@ def _respite_card() -> dict:
     return {
         "type": "RespiteOptionsCard",
         "props": {
+            "person_id": "sarah",
             "title": "Respite options near you",
             "options": options,
             "note": "These are local options Sarah might want to consider \u2014 no commitment, just information.",
@@ -324,28 +367,55 @@ def _combined_triage(
     plan_version: int,
     trigger: str | None,
 ) -> dict:
-    """All three crossed. Order rows by urgency: RED first, then by safety-critical pattern."""
+    """All three crossed. Emit FULL evidence per person, grouped.
+
+    Design principle: when stakes go up, evidence per person should ALSO
+    go up — better organised, not stripped. The triage header gives an
+    executive summary; each person then gets the same bundle they'd see
+    in single_alert (drift card + alert + timeline + their support card).
+    The frontend groups by person_id so the page reads as three coherent
+    narratives, not one undifferentiated soup.
+    """
     severity_order = {"red": 0, "amber": 1, "yellow": 2, "green": 3, "gray": 4}
-    pids = sorted(matches.keys(), key=lambda p: severity_order[scores[p]["color"]])
-    rows = [_triage_row(pid, scores[pid], matches.get(pid)) for pid in pids]
+    pids_by_urgency = sorted(matches.keys(), key=lambda p: severity_order[scores[p]["color"]])
+    rows = [_triage_row(pid, scores[pid], matches.get(pid)) for pid in pids_by_urgency]
     triage = {
         "type": "CombinedTriageView",
         "props": {
             "title": "Three things asking for your attention right now",
             "rationale": (
-                "Ordered by current state: Helen is in the rapid-acceleration tier "
-                "(NPI drift), then Tom on the heart-failure pattern, then Sarah whose "
-                "hopelessness signal fired the validated ZBI safety override."
+                "Three patterns crossed at once. Each person's full evidence is below — "
+                "score, what Anchor noticed, the timeline of recent signals, and the "
+                "next step that actually moves the needle."
             ),
             "rows": rows,
             "disclaimer": DISCLAIMER,
         },
     }
-    components = [triage]
+
+    components: list[dict] = [triage]
+
+    # All three drift cards together at the top — the situation overview.
     components.extend(_drift_card(pid, scores[pid]) for pid in ("tom", "helen", "sarah"))
-    # Most-urgent alert card surfaces below the triage view
-    most_urgent = pids[0]
-    components.append(_pattern_alert_card(matches[most_urgent]))
+
+    # Per-person evidence bundles, in urgency order. Each bundle = the same
+    # depth single_alert would give: alert + timeline + the person's
+    # domain-specific support card.
+    audience_for = {
+        "tom": "Tom's cardiologist",
+        "helen": "Helen's neurologist",
+        "sarah": "Sarah",
+    }
+    for pid in pids_by_urgency:
+        components.append(_pattern_alert_card(matches[pid]))
+        components.append(_signal_timeline(pid))
+        if pid == "helen":
+            components.append(_contributor_map("helen"))
+        elif pid == "tom":
+            components.append(_talking_points_card("tom", audience_for["tom"]))
+        elif pid == "sarah":
+            components.append(_respite_card())
+
     return {
         "layout": "combined_triage",
         "components": components,

@@ -111,18 +111,114 @@ const DualRisk = ({ slots }: { slots: NonNullable<UIPlan['slots']> }) => (
 );
 
 // --- Combined triage -----------------------------------------------------
+//
+// Design principle for this layout (the most-loaded view):
+//   When stakes go up, EVIDENCE PER PERSON also goes up. We don't strip;
+//   we organise. The triage header gives the executive summary; the three
+//   drift cards give the situation overview; then each person gets their
+//   own narrative section (alert + timeline + their support card) in
+//   urgency order. Three coherent stories, not one undifferentiated soup.
+
+const PERSON_DISPLAY: Record<string, { name: string; role: string; emoji: string }> = {
+  helen: { name: 'Helen', role: 'Cognitive wellbeing · Mom (84)',  emoji: '🧠' },
+  tom:   { name: 'Tom',   role: 'Physical wellbeing · Dad (68)',   emoji: '❤️' },
+  sarah: { name: 'Sarah', role: 'Caregiver wellbeing · You (42)',  emoji: '🌿' },
+};
+
+const stateRibbon = (color?: string): string => {
+  switch (color) {
+    case 'red':    return 'from-state-red/15 via-state-red/5 to-transparent';
+    case 'amber':  return 'from-state-amber/12 via-state-amber/4 to-transparent';
+    case 'yellow': return 'from-state-yellow/12 via-state-yellow/4 to-transparent';
+    default:       return 'from-anchor-mist-100 via-anchor-mist-50 to-transparent';
+  }
+};
+
+const PersonSection = ({
+  personId,
+  drift,
+  cards,
+}: {
+  personId: string;
+  drift?: PlanComponent;
+  cards: PlanComponent[];
+}) => {
+  const meta = PERSON_DISPLAY[personId] ?? { name: personId, role: '', emoji: '•' };
+  const color = (drift?.props as Record<string, unknown> | undefined)?.color as string | undefined;
+  if (!drift && cards.length === 0) return null;
+  return (
+    <section className="relative">
+      {/* Section banner so it's unmistakable which person we're reading. */}
+      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${stateRibbon(color)} px-5 py-3 mb-3 border border-anchor-mist-100/70`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="font-display text-[20px] text-anchor-ink-900 leading-none tracking-tight">
+            <span className="mr-2" aria-hidden>{meta.emoji}</span>
+            {meta.name}
+          </h3>
+          <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-anchor-mist-400">
+            {meta.role}
+          </span>
+        </div>
+      </div>
+      <div className="space-y-4">
+        {drift && <div>{renderComponent(drift)}</div>}
+        <div className="grid gap-4 lg:grid-cols-2">
+          {cards.map((c, i) => {
+            // Wide cards take both columns; narrow ones share a row.
+            const wide =
+              c.type === 'PatternAlertCard' ||
+              c.type === 'ContributorMap' ||
+              c.type === 'SignalTimeline';
+            return (
+              <div key={i} className={wide ? 'lg:col-span-2' : ''}>
+                {renderComponent(c)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
 
 const CombinedTriage = ({ components }: { components: PlanComponent[] }) => {
   const triage = components.find((c) => c.type === 'CombinedTriageView');
   const drifts = components.filter((c) => c.type === 'DriftScoreCard');
-  const rest = components.filter(
+  const supporting = components.filter(
     (c) => c.type !== 'CombinedTriageView' && c.type !== 'DriftScoreCard',
   );
+
+  // Group supporting cards by person_id. The plan_builder emits them in
+  // urgency order; we preserve that order via a Map (insertion-order keyed).
+  const byPerson = new Map<string, PlanComponent[]>();
+  for (const c of supporting) {
+    const pid = (c.props as Record<string, unknown>).person_id as string | undefined;
+    if (!pid) continue;
+    if (!byPerson.has(pid)) byPerson.set(pid, []);
+    byPerson.get(pid)!.push(c);
+  }
+
+  // Drift cards keyed by person for the section header lookup.
+  const driftFor: Record<string, PlanComponent | undefined> = {};
+  for (const d of drifts) {
+    const pid = (d.props as Record<string, unknown>).person_id as string;
+    driftFor[pid] = d;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Executive summary at top */}
       {triage && <div>{renderComponent(triage)}</div>}
-      <PersonStack items={drifts} />
-      {rest.length > 0 && <SupportGrid items={rest} />}
+
+      {/* Per-person narrative sections, in urgency order from the backend */}
+      {Array.from(byPerson.keys()).map((pid) => (
+        <PersonSection
+          key={pid}
+          personId={pid}
+          drift={driftFor[pid]}
+          cards={byPerson.get(pid) ?? []}
+        />
+      ))}
     </div>
   );
 };

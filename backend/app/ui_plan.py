@@ -40,6 +40,10 @@ class DriftScoreCardProps(BaseModel):
     state: Literal["green", "yellow", "amber", "red"] = "green"
     raw_score_label: str = ""  # instrument-native, e.g. "11 / 24"
     instrument: str = ""  # which instrument computed this
+    # Inline 'what's contributing' chips so the answer to 'why is X at this
+    # score?' is visible without scrolling. Each chip = one human-readable
+    # signal label (e.g. 'Edema', 'Memory repetition', 'Sleep disruption').
+    active_signals: list[str] = Field(default_factory=list)
 
 
 class SignalEntry(BaseModel):
@@ -86,6 +90,7 @@ class ContributorMapProps(BaseModel):
 
 
 class TalkingPointsCardProps(BaseModel):
+    person_id: Literal["tom", "helen", "sarah"] = "tom"
     title: str = "Talking points for your next visit"
     audience: str  # "Tom's cardiologist" / "Helen's neurologist"
     bullets: list[str]
@@ -100,6 +105,7 @@ class SupportOption(BaseModel):
 
 
 class RespiteOptionsCardProps(BaseModel):
+    person_id: Literal["sarah"] = "sarah"
     title: str = "Local options for a break"
     options: list[SupportOption]
     note: str = "Even one weekend off can reset the stress curve."

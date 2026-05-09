@@ -96,6 +96,17 @@ const captionTone = (color: string): string => {
   }
 };
 
+// Signal chip tone matches the person's current state color, but as a
+// soft fill so the chips read as supporting evidence (not duplicate alarms).
+const signalChipTone = (color: string): string => {
+  switch (color) {
+    case 'red':    return 'bg-state-red-soft text-state-red border-state-red/25';
+    case 'amber':  return 'bg-state-amber-soft text-state-amber border-state-amber/25';
+    case 'yellow': return 'bg-state-yellow-soft text-state-yellow border-state-yellow/30';
+    default:       return 'bg-anchor-cream-100 text-anchor-ink-600 border-anchor-mist-100';
+  }
+};
+
 export const DriftScoreCard = (p: DriftScoreCardProps) => {
   const accent = personAccent(p.person_id);
   const arrow = trendArrow(p.trend);
@@ -184,6 +195,21 @@ export const DriftScoreCard = (p: DriftScoreCardProps) => {
             height={140}
             ariaLabel={`${p.display_name} 14-day wellbeing trend, currently ${p.score} out of 100`}
           />
+          {p.active_signals && p.active_signals.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-[0.12em] font-semibold text-anchor-mist-400 mr-1">
+                Active signals
+              </span>
+              {p.active_signals.map((sig, i) => (
+                <span
+                  key={i}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border ${signalChipTone(p.color)}`}
+                >
+                  {sig}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>

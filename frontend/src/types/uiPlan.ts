@@ -33,6 +33,7 @@ export interface DriftScoreCardProps {
   state: State;
   raw_score_label: string;
   instrument: string;
+  active_signals?: string[];
 }
 
 export interface SignalEntry {
@@ -74,6 +75,7 @@ export interface ContributorMapProps {
 }
 
 export interface TalkingPointsCardProps {
+  person_id?: PersonId;
   title: string;
   audience: string;
   bullets: string[];
@@ -88,6 +90,7 @@ export interface SupportOption {
 }
 
 export interface RespiteOptionsCardProps {
+  person_id?: PersonId;
   title: string;
   options: SupportOption[];
   note: string;
