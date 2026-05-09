@@ -44,6 +44,11 @@ class DriftScoreCardProps(BaseModel):
     # score?' is visible without scrolling. Each chip = one human-readable
     # signal label (e.g. 'Edema', 'Memory repetition', 'Sleep disruption').
     active_signals: list[str] = Field(default_factory=list)
+    # Real per-day wellbeing score for the sparkline. Last entry == today.
+    # Computed by re-running the instrument with `today=d` for d in the
+    # 14-day window — NOT a cosmetic wobble. If empty, frontend may fall
+    # back to a synthetic curve, but production should always populate this.
+    score_history: list[float] = Field(default_factory=list)
 
 
 class SignalEntry(BaseModel):

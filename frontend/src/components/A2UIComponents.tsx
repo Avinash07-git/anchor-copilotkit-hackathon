@@ -110,7 +110,14 @@ const signalChipTone = (color: string): string => {
 export const DriftScoreCard = (p: DriftScoreCardProps) => {
   const accent = personAccent(p.person_id);
   const arrow = trendArrow(p.trend);
-  const series = deriveSparkline(p.person_id, p.state, p.score);
+  // Prefer the REAL per-day score history from the backend (re-runs the
+  // instrument with today=d for d in the 14-day window). Fall back to
+  // the synthetic wobble only if the backend didn't supply history — a
+  // safety net for older plans, never the production path.
+  const series =
+    p.score_history && p.score_history.length >= 2
+      ? p.score_history
+      : deriveSparkline(p.person_id, p.state, p.score);
   const stroke = sparkStroke(p.color);
   const fill = sparkFill(p.color);
   const caption = friendlyStateCaption(p.color);

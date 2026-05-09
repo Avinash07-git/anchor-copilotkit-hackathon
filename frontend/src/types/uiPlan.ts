@@ -34,6 +34,8 @@ export interface DriftScoreCardProps {
   raw_score_label: string;
   instrument: string;
   active_signals?: string[];
+  /** Real per-day wellbeing scores, oldest first, last entry == today. */
+  score_history?: number[];
 }
 
 export interface SignalEntry {

@@ -31,8 +31,114 @@ from app.data.language_rules import (
 )
 from app.mcp_tools.observation_parser import _LOG_STORE
 from app.mcp_tools.patterns import check_pattern_match
-from app.mcp_tools.scoring import calculate_observation_rate, update_wellbeing_score
+from app.mcp_tools.scoring import (
+    calculate_observation_rate,
+    compute_score_history,
+    update_wellbeing_score,
+)
 from app.mcp_tools.support import draft_talking_points, find_local_support
+
+
+# --- Per-signal action templates -----------------------------------------
+#
+# These map ONE concrete clinical signal id (the same ids the scoring
+# instruments emit) to ONE concrete, observational next step. The pattern
+# alert card pulls from this dict using the actually-fired signals on the
+# current score result, so the user never sees a "stove safety check"
+# recommendation when no stove signal was ever logged.
+#
+# Adding a new signal? Just add its id + an action sentence here. No
+# layout code needs to change.
+
+_SIGNAL_ACTION_TEMPLATES: dict[str, str] = {
+    # Tom — Heart Failure Symptom Monitoring Framework
+    "S1_dyspnea":            "Mention the recent shortness of breath \u2014 when it happens, how long it lasts.",
+    "S2_fatigue":            "Note the unusual fatigue and how it compares to Tom's normal.",
+    "S3_edema":              "Track ankle/leg swelling daily until the next visit (a quick photo helps).",
+    "S4_appetite_loss":      "Note the appetite drop \u2014 when it started, what he's eating now.",
+    "S5_general_unwellness": "Capture the 'just not himself' moments \u2014 vague but important context.",
+    "S6_orthopnea":          "Mention the trouble breathing while lying down \u2014 a key HF symptom.",
+    "S7_missed_medication":  "Confirm the medication schedule is still on track and ask about a pill organiser.",
+    "S8_weight_gain":        "Weigh Tom daily until the next appointment \u2014 sudden gain is a red flag.",
+    # Helen — NPI subset (cognitive)
+    "C1_memory_repetition":  "Document the repeated-question moments with dates so the neurologist sees the pattern.",
+    "C2_disorientation":     "Note the disorientation specifics (about year/place/people) and frequency.",
+    "C3_safety_failure":     "Add a stove-safety check at home (timer or auto-shutoff) and note the lapse.",
+    "C4_agitation":          "Note when agitation happens and what calms it \u2014 useful for the care plan.",
+    "C5_withdrawal":         "Mention the withdrawal from usual activities \u2014 a subtle but real signal.",
+    "C6_sleep_disruption":   "Track sleep / sundowning patterns and bring the notes to the next visit.",
+    "C7_self_care_decline":  "Note specific self-care lapses (bathing, dressing) and how often.",
+    "C8_language_difficulty":"Document any word-finding moments \u2014 brief examples help the clinician.",
+    # Sarah — ZBI-12 (caregiver)
+    "Z1_sleep":               "Protect sleep first \u2014 even one full night this week resets stress capacity.",
+    "Z2_emotional_exhaustion":"Acknowledge the exhaustion to one trusted person this week.",
+    "Z3_isolation":           "Reconnect with one person who isn't part of caregiving \u2014 a 10-minute call counts.",
+    "Z4_guilt":               "Notice the guilt without acting on it \u2014 it's a symptom, not a verdict.",
+    "Z5_loss_of_control":     "Pick ONE thing this week to hand off (a meal, a drive, an errand).",
+    "Z6_financial_stress":    "Look up one local respite voucher program (Family Caregiver Alliance has them).",
+    "Z7_anger":               "Anger is a valid signal \u2014 name it, don't act on it in the moment.",
+    "Z8_health_neglect":      "Book your own postponed appointment this week \u2014 even a 15-minute one.",
+    "Z9_relationship_strain": "Have one direct conversation with the person you've been short with.",
+    "Z10_hopelessness":       "Reach out for respite care today \u2014 even one weekend off matters.",
+    "Z11_fear":               "Write down what you're afraid of \u2014 it shrinks once it's on paper.",
+    "Z12_loss_of_personal_time": "Block 30 minutes for yourself this week and treat it as non-negotiable.",
+}
+
+# Framework-level fallbacks — always included so the user gets at least
+# one "go to the clinician" action even on the gentlest signals.
+_FRAMEWORK_FALLBACK_BY_LENS: dict[str, str] = {
+    "body":      "Bring these observations to Tom's next cardiology visit (talking points ready below).",
+    "mind":      "Bring the dated observations to Helen's next neurology / primary-care visit.",
+    "caregiver": "Loop in family backup \u2014 a draft message to Sarah's brother is ready below.",
+}
+
+
+def _build_dynamic_actions(pattern_match: dict, max_actions: int = 4) -> list[str]:
+    """Generate suggested actions from the actually-fired signals.
+
+    Replaces the previously-static `pattern["suggested_actions"]` list,
+    which always recommended e.g. 'stove safety check' for Helen even
+    when no stove signal was logged. The new logic:
+
+      1. Look at the live `active_domains` on the score result — these
+         are the signals that actually drove the threshold crossing.
+      2. For each, append the matching action template.
+      3. Always append the framework-level fallback so there's a
+         "bring this to your clinician" anchor.
+
+    De-duplicates while preserving order, caps at `max_actions`.
+    """
+    sr = pattern_match["score_result"]
+    lens = PEOPLE[sr["person_id"]]["lens"]
+    active = sr.get("active_domains", []) or []
+
+    # Sort by cumulative_severity desc so the most-pressing signal's
+    # action shows first. Falls back to natural order for tied/missing
+    # severities.
+    def _severity(d: dict) -> int:
+        return int(d.get("cumulative_severity") or d.get("severity") or 0)
+
+    actions: list[str] = []
+    seen: set[str] = set()
+    for d in sorted(active, key=_severity, reverse=True):
+        sig_id = d.get("id")
+        if not sig_id:
+            continue
+        template = _SIGNAL_ACTION_TEMPLATES.get(sig_id)
+        if template and template not in seen:
+            actions.append(template)
+            seen.add(template)
+
+    fallback = _FRAMEWORK_FALLBACK_BY_LENS.get(lens)
+    if fallback and fallback not in seen:
+        actions.append(fallback)
+
+    # If somehow no signals matched (defensive), fall back to whatever
+    # the pattern definition declared. Better to show something.
+    if not actions:
+        actions = list(pattern_match.get("suggested_actions", []))
+
+    return actions[:max_actions]
 
 
 # --- Component builders ---------------------------------------------------
@@ -106,6 +212,7 @@ def _drift_card(person_id: str, score_result: dict) -> dict:
             "raw_score_label": score_result["raw_score_label"],
             "instrument": score_result["instrument"],
             "active_signals": _active_signals_for(person_id),
+            "score_history": compute_score_history(person_id, days=14),
         },
     }
 
@@ -142,7 +249,7 @@ def _pattern_alert_card(pattern_match: dict) -> dict:
             "title": pattern_match.get("title", "A pattern worth raising"),
             "why_it_matters": pattern_match["why_it_matters"],
             "signals": _signals_from_pattern(pattern_match),
-            "suggested_actions": pattern_match["suggested_actions"],
+            "suggested_actions": _build_dynamic_actions(pattern_match),
             "disclaimer": DISCLAIMER,
             "citation": sr["citation"],
             "raw_score_label": sr["raw_score_label"],

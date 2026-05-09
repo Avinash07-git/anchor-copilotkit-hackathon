@@ -544,6 +544,45 @@ def update_wellbeing_score(person_id: str) -> ScoreResult:
     return result
 
 
+def compute_score_history(person_id: str, days: int = 14) -> list[float]:
+    """Real per-day wellbeing score history for the sparkline.
+
+    For each day d in [today - (days-1) .. today], re-run the person's
+    instrument with `today=d` so the score reflects the rolling-window
+    state AT THAT DAY (not the current state). This is what makes the
+    sparkline a faithful trace of what Anchor would have shown each day,
+    not a cosmetic wobble.
+
+    Days before any logs exist (i.e. negative days) are clamped to the
+    earliest computable score. Returns a list of `days` floats, oldest
+    first, newest last — consumable directly by the frontend Sparkline.
+    """
+    if person_id not in PEOPLE:
+        raise ValueError(f"Unknown person_id: {person_id}")
+
+    today = _TODAY_FOR_PERSON.get(person_id, 0)
+    lens = PEOPLE[person_id]["lens"]
+    if lens == "body":
+        scorer = score_physical_drift
+    elif lens == "mind":
+        scorer = score_cognitive_drift
+    elif lens == "caregiver":
+        scorer = score_caregiver_burden
+    else:
+        raise ValueError(f"No instrument wired for lens: {lens}")
+
+    history: list[float] = []
+    for offset in range(days - 1, -1, -1):
+        d = today - offset
+        # The instruments tolerate negative `today` — the rolling window
+        # just slides further into the past and (correctly) finds no
+        # entries, which renders as a calm baseline. That's exactly what
+        # we want for days before the log started.
+        result = scorer(person_id, d)
+        history.append(float(result["wellbeing_score"]))
+    return history
+
+
 def calculate_observation_rate(person_id: str) -> dict:
     """For UC2 ContributorMap — this-week observer count vs prior baseline.
 
