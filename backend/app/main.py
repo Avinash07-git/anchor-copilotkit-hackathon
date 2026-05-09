@@ -412,15 +412,7 @@ async def approval(decision: ApprovalDecision) -> dict:
     return {"ok": True, "decision": decision.decision}
 
 
-@app.post("/api/copilotkit")
-async def copilotkit_runtime_stub(request: Request) -> dict:
-    """No-op stub for the CopilotKit provider's runtimeUrl probe.
-
-    We do not run the full CopilotKit GraphQL runtime — Anchor drives its
-    own chat surface against /api/chat. This keeps the <CopilotKit /> React
-    provider quiet during dev so the console isn't full of 404s.
-    """
-    return {"ok": True, "runtime": "anchor-bridge"}
+# CopilotKit real endpoint — wired after app creation (see bottom of module)
 
 
 # --- AG-UI style SSE stream ------------------------------------------------
@@ -464,3 +456,15 @@ async def agui_stream(request: Request):
                 _subscribers.remove(queue)
 
     return EventSourceResponse(event_gen())
+
+
+# --- CopilotKit real endpoint ----------------------------------------------
+# Mount AFTER the FastAPI app is fully built so add_fastapi_endpoint can
+# introspect the existing routes and add its own without conflicts.
+
+try:
+    from app.ck_agent import mount_copilotkit
+    mount_copilotkit(app, prefix="/api/copilotkit")
+except Exception as _ck_err:  # noqa: BLE001 — never crash startup
+    import sys
+    print(f"[anchor.ck_agent] CopilotKit mount failed ({_ck_err!r}); /api/copilotkit unavailable.", file=sys.stderr)
