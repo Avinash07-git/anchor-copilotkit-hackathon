@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -30,6 +30,13 @@ body {
   font-family: 'Fraunces', 'Inter', serif;
   font-feature-settings: 'ss01', 'ss02';
   letter-spacing: -0.02em;
+}
+
+/* Landing page uses the warmer, lighter editorial heading system from the
+   design brief while the in-product workspace keeps its existing display face. */
+.font-landing-display {
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.035em;
 }
 
 /* Cockpit-instrument numerals: tabular spacing + slashed zero + true tnum */

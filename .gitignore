@@ -45,6 +45,7 @@ Thumbs.db
 
 # Bedside — runtime artifacts
 backend/app/data/runtime/
+backend/.data/
 backend/tmp/
 
 # 🚨 PII / sensitive data — NEVER commit real medical / personal data

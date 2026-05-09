@@ -10,6 +10,7 @@
 
 import { renderComponent } from './A2UIComponents';
 import type { PlanComponent, UIPlan } from '../types/uiPlan';
+import { alertBandState } from './cardHelpers';
 
 // Vertical stack of person rows
 const PersonStack = ({ items }: { items: PlanComponent[] }) => (
@@ -229,6 +230,25 @@ const stateLabelFor = (color?: string): string => {
   }
 };
 
+const alertBandHeaderTone = (level: 'stable' | 'warning' | 'alarm'): string => {
+  switch (level) {
+    case 'alarm':   return 'text-state-red';
+    case 'warning': return 'text-state-amber';
+    default:        return 'text-anchor-ink-900';
+  }
+};
+
+const alertBandHeaderBadgeTone = (level: 'stable' | 'warning' | 'alarm'): string => {
+  switch (level) {
+    case 'alarm':
+      return 'bg-state-red-soft text-state-red border-state-red/30';
+    case 'warning':
+      return 'bg-state-amber-soft text-state-amber border-state-amber/30';
+    default:
+      return 'bg-state-green-soft text-state-green border-state-green/30';
+  }
+};
+
 const PersonSection = ({
   personId,
   drift,
@@ -246,6 +266,7 @@ const PersonSection = ({
   const driftProps = (drift?.props as Record<string, unknown> | undefined) ?? {};
   const color = driftProps.color as string | undefined;
   const score = driftProps.score as number | undefined;
+  const alertBand = typeof score === 'number' ? alertBandState(score) : null;
   if (!drift && cards.length === 0) return null;
 
   return (
@@ -285,9 +306,18 @@ const PersonSection = ({
           </div>
           {typeof score === 'number' && (
             <div className="hidden sm:flex flex-col items-end shrink-0 leading-none">
-              <span className="font-display text-[40px] text-anchor-ink-900 tabular-nums leading-none">
+              <span
+                className={`font-display text-[40px] tabular-nums leading-none ${alertBandHeaderTone(alertBand?.level ?? 'stable')}`}
+              >
                 {Math.round(score)}
               </span>
+              {alertBand && (
+                <span
+                  className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] ${alertBandHeaderBadgeTone(alertBand.level)}`}
+                >
+                  {alertBand.label}
+                </span>
+              )}
               <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-anchor-mist-400 mt-1">
                 Wellbeing today
               </span>

@@ -114,7 +114,11 @@ async def compose_plan(
         # Log to stderr so we know in dev, but never crash the demo.
         import sys
 
-        print(f"[anchor.agent] LLM mode failed ({exc!r}); falling back to deterministic.", file=sys.stderr)
+        print(
+            f"[anchor.agent] LLM mode failed ({exc!r}); "
+            "falling back to deterministic.",
+            file=sys.stderr,
+        )
         plan = build_plan(triggered_by, plan_version)
         plan["meta"]["fallback_reason"] = f"{type(exc).__name__}: {exc}"
         return plan

@@ -9,6 +9,8 @@ Local quick start:
 uv venv
 source .venv/bin/activate
 uv pip install -e .
+export DATABASE_URL=sqlite:///./.data/anchor.db
+export AUTH_SECRET_KEY=replace-this-with-a-long-random-secret
 ANCHOR_FORCE_DETERMINISTIC=1 uv run uvicorn app.main:app --reload --port 8000
 ```
 

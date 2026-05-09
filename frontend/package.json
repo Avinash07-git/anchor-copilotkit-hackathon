@@ -7,23 +7,31 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext ts,tsx"
+    "lint": "eslint src --ext ts,tsx",
+    "spectrum:terminal": "node ./scripts/spectrum-terminal-bridge.mjs",
+    "spectrum:imessage": "node ./scripts/spectrum-imessage-bridge.mjs"
   },
   "dependencies": {
     "@copilotkit/react-core": "^1.57.1",
     "@copilotkit/react-ui": "^1.57.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^7.15.0",
+    "spectrum-ts": "^1.4.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
+    "eslint": "^10.3.0",
+    "globals": "^17.6.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
+    "typescript-eslint": "^8.59.2",
     "vite": "^5.4.10"
   },
   "//": "CopilotKit + AG-UI client + A2UI bridge added in Saturday-morning build block"

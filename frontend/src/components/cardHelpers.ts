@@ -8,6 +8,16 @@
 
 import type { Color, Lens, PersonId, State } from '../types/uiPlan';
 
+export type AlertBandLevel = 'stable' | 'warning' | 'alarm';
+
+export interface AlertBandState {
+  level: AlertBandLevel;
+  label: string;
+  rangeLabel: string;
+  color: Extract<Color, 'green' | 'amber' | 'red'>;
+  guidance: string;
+}
+
 // --- Avatars ------------------------------------------------------------
 
 export const initialsFor = (displayName: string): string =>
@@ -218,4 +228,40 @@ export const trendArrow = (
     case 'down': return { glyph: '↘', cls: 'text-state-red',       label: 'trending down' };
     case 'flat': return { glyph: '→', cls: 'text-anchor-mist-400', label: 'steady' };
   }
+};
+
+// Alert bands are a presentation-layer read of the normalised wellbeing
+// score. They do NOT replace the clinical instrument state; they give the UI a
+// simple, consistent threshold language for quick scanning:
+//   50+  = stable
+//   <50  = warning
+//   <20  = red alarm
+export const alertBandState = (score: number): AlertBandState => {
+  if (score < 20) {
+    return {
+      level: 'alarm',
+      label: 'Red alarm',
+      rangeLabel: '0-19',
+      color: 'red',
+      guidance: 'Below 20 needs immediate attention.',
+    };
+  }
+
+  if (score < 50) {
+    return {
+      level: 'warning',
+      label: 'Warning',
+      rangeLabel: '20-49',
+      color: 'amber',
+      guidance: 'Below 50 is in the warning band.',
+    };
+  }
+
+  return {
+    level: 'stable',
+    label: 'Stable',
+    rangeLabel: '50-100',
+    color: 'green',
+    guidance: '50 and above is stable.',
+  };
 };

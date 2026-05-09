@@ -20,14 +20,22 @@ export interface AGUIState {
   connected: boolean;
 }
 
-export function useAGUIStream(): AGUIState {
+export function useAGUIStream(enabled = true): AGUIState {
   const [plan, setPlan] = useState<UIPlan | null>(null);
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [connected, setConnected] = useState(false);
   const stepIdRef = useRef(0);
 
   useEffect(() => {
-    const es = new EventSource('/agui/stream');
+    if (!enabled) {
+      setConnected(false);
+      setPlan(null);
+      setSteps([]);
+      stepIdRef.current = 0;
+      return;
+    }
+
+    const es = new EventSource('/agui/stream', { withCredentials: true });
     es.addEventListener('open', () => setConnected(true));
     es.addEventListener('error', () => setConnected(false));
 
@@ -54,7 +62,7 @@ export function useAGUIStream(): AGUIState {
     });
 
     return () => es.close();
-  }, []);
+  }, [enabled]);
 
   return { plan, steps, connected };
 }

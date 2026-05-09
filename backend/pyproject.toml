@@ -17,6 +17,8 @@ dependencies = [
     "mcp>=1.0.0",
     "copilotkit>=0.1.88",
     "langgraph>=0.2.0",
+    "psycopg[binary]>=3.3.4",
+    "mcp-use>=1.7.0",
 ]
 
 [project.optional-dependencies]

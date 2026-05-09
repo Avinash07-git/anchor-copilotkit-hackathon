@@ -34,7 +34,10 @@ PEOPLE: dict[People, dict] = {
         "display_name": "Helen Reynolds",
         "age": 84,
         "lens": "mind",
-        "context": "Tom's mother. Lives semi-independently 20 minutes away. Early-stage memory concerns.",
+        "context": (
+            "Tom's mother. Lives semi-independently 20 minutes away. "
+            "Early-stage memory concerns."
+        ),
         "baseline_score": 80,
     },
     "sarah": {
@@ -125,7 +128,8 @@ PATTERNS: dict[str, dict] = {
             "8 validated symptom domains, severity-weighted, 7-day rolling window."
         ),
         "suggested_actions": [
-            "Mention all the recent observations at Tom's next cardiology visit (talking points ready below)",
+            "Mention all the recent observations at Tom's next cardiology visit "
+            "(talking points ready below)",
             "Confirm the blood thinner schedule is still on track",
             "Ask whether to weigh Tom daily until the next appointment",
         ],
@@ -148,7 +152,8 @@ PATTERNS: dict[str, dict] = {
             "4-week baseline drives state."
         ),
         "suggested_actions": [
-            "Document the 4 observations with dates + observers to bring to Helen's next neurology appointment",
+            "Document the 4 observations with dates + observers to bring to "
+            "Helen's next neurology appointment",
             "Add a stove-safety check to the home (timer or auto-shutoff)",
             "Consider whether a care-level reassessment makes sense",
         ],
@@ -183,16 +188,46 @@ PATTERNS: dict[str, dict] = {
 
 LOCAL_SUPPORT: dict[str, list[dict]] = {
     "respite_care": [
-        {"name": "Family Caregiver Alliance", "kind": "Respite voucher program", "phone": "(800) 445-8106", "distance_mi": 0},
-        {"name": "Home Instead — San Francisco", "kind": "In-home respite, 4-hr minimum", "phone": "(415) 351-3010", "distance_mi": 2.1},
-        {"name": "AlzCare Day Program", "kind": "Adult day program (Helen-appropriate)", "phone": "(415) 750-4111", "distance_mi": 3.4},
+        {
+            "name": "Family Caregiver Alliance",
+            "kind": "Respite voucher program",
+            "phone": "(800) 445-8106",
+            "distance_mi": 0,
+        },
+        {
+            "name": "Home Instead — San Francisco",
+            "kind": "In-home respite, 4-hr minimum",
+            "phone": "(415) 351-3010",
+            "distance_mi": 2.1,
+        },
+        {
+            "name": "AlzCare Day Program",
+            "kind": "Adult day program (Helen-appropriate)",
+            "phone": "(415) 750-4111",
+            "distance_mi": 3.4,
+        },
     ],
     "support_group": [
-        {"name": "SF Caregiver Coalition — Tuesday evenings", "kind": "Peer support group", "phone": "(415) 750-4111", "distance_mi": 1.8},
-        {"name": "AARP Family Caregiving Online Community", "kind": "Online, 24/7", "phone": None, "distance_mi": 0},
+        {
+            "name": "SF Caregiver Coalition — Tuesday evenings",
+            "kind": "Peer support group",
+            "phone": "(415) 750-4111",
+            "distance_mi": 1.8,
+        },
+        {
+            "name": "AARP Family Caregiving Online Community",
+            "kind": "Online, 24/7",
+            "phone": None,
+            "distance_mi": 0,
+        },
     ],
     "doctor_followup": [
-        {"name": "UCSF Cardiology — Dr. Patel", "kind": "Tom's cardiologist, next opening Tue 2pm", "phone": "(415) 353-2873", "distance_mi": 0},
+        {
+            "name": "UCSF Cardiology — Dr. Patel",
+            "kind": "Tom's cardiologist, next opening Tue 2pm",
+            "phone": "(415) 353-2873",
+            "distance_mi": 0,
+        },
     ],
 }
 
@@ -208,7 +243,10 @@ TRIGGER_SEQUENCE = [
         "person": "tom",
         "observer": "sarah",
         "day": 11,
-        "raw_text": "Tom's ankles are really swollen today and he barely ate anything — he just doesn't seem himself",
+        "raw_text": (
+            "Tom's ankles are really swollen today and he barely ate anything "
+            "— he just doesn't seem himself"
+        ),
         "expected_layout": "single_alert",
     },
     {
@@ -219,10 +257,29 @@ TRIGGER_SEQUENCE = [
         # to demonstrate NPI's multi-observer aggregation. The sub-list runs in
         # order; the rebuild check happens after all 4 are logged.
         "observations": [
-            {"observer": "tom", "day": 0, "raw_text": "Mom seemed fine, a bit forgetful when I visited Sunday"},
-            {"observer": "sarah", "day": 3, "raw_text": "She asked me the same question about dinner four times in one hour"},
-            {"observer": "emma", "day": 5, "raw_text": "She thought it was 1987 when I called from college"},
-            {"observer": "mrs_chen", "day": 6, "raw_text": "Helen left the stove on twice this week"},
+            {
+                "observer": "tom",
+                "day": 0,
+                "raw_text": "Mom seemed fine, a bit forgetful when I visited Sunday",
+            },
+            {
+                "observer": "sarah",
+                "day": 3,
+                "raw_text": (
+                    "She asked me the same question about dinner four times "
+                    "in one hour"
+                ),
+            },
+            {
+                "observer": "emma",
+                "day": 5,
+                "raw_text": "She thought it was 1987 when I called from college",
+            },
+            {
+                "observer": "mrs_chen",
+                "day": 6,
+                "raw_text": "Helen left the stove on twice this week",
+            },
         ],
         # Convenience: the headline trigger note (the one shown to the audience)
         "observer": "mrs_chen",

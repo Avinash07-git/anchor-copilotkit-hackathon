@@ -24,7 +24,7 @@ from app.data.language_rules import (
     state_to_color,
     state_to_wellbeing_score,
 )
-from app.mcp_tools.observation_parser import INSTRUMENT_OF, get_all_logs
+from app.mcp_tools.observation_parser import get_all_logs
 
 # --- Public output shape -------------------------------------------------
 
@@ -128,7 +128,6 @@ def score_physical_drift(person_id: str = "tom", today: int = 11) -> ScoreResult
     # Rebuild triggers — only count domains at moderate-or-worse severity (≥2)
     # for the safety overrides. A single "a bit heavy" mention shouldn't be
     # enough to fire the high-risk combo by itself.
-    domains_active = list(by_domain.keys())
     moderate_or_worse = {d for d, sv in weighted_severity.items() if sv >= 2}
     high_risk_combo = ("S7_missed_medication" in moderate_or_worse) and (
         "S3_edema" in moderate_or_worse or "S1_dyspnea" in moderate_or_worse
@@ -138,9 +137,15 @@ def score_physical_drift(person_id: str = "tom", today: int = 11) -> ScoreResult
     ) or high_risk_combo
     reasons = []
     if len(moderate_or_worse) >= 3:
-        reasons.append(f"{len(moderate_or_worse)} symptom domains active at moderate-or-worse severity in 7-day window")
+        reasons.append(
+            f"{len(moderate_or_worse)} symptom domains active at "
+            "moderate-or-worse severity in 7-day window"
+        )
     if high_risk_combo:
-        reasons.append("High-risk combination flagged in the source framework (edema/dyspnea + missed medication, both ≥ moderate)")
+        reasons.append(
+            "High-risk combination flagged in the source framework "
+            "(edema/dyspnea + missed medication, both ≥ moderate)"
+        )
     if state in ("amber", "red"):
         reasons.append(f"Score {raw}/24 crossed into {state.upper()} band")
     rebuild_reason = "; ".join(reasons) if reasons else None
@@ -148,11 +153,11 @@ def score_physical_drift(person_id: str = "tom", today: int = 11) -> ScoreResult
     # Map raw → within-band intensity. 0 = just entered this band (better
     # edge); 1 = at the extreme of the band. Keeps the score gradient alive
     # so two amber-state people don't both render as the same number.
-    if state == 'red':
+    if state == "red":
         intensity = min(1.0, max(0.0, (raw - 15) / 9.0))
-    elif state == 'amber':
+    elif state == "amber":
         intensity = min(1.0, max(0.0, (raw - 10) / 4.0))
-    elif state == 'yellow':
+    elif state == "yellow":
         intensity = min(1.0, max(0.0, (raw - 5) / 4.0))
     else:
         intensity = min(1.0, max(0.0, raw / 4.0))
@@ -458,17 +463,20 @@ def score_caregiver_burden(person_id: str = "sarah", today: int = 14) -> ScoreRe
             "early indicator of caregiver depression, regardless of overall score."
         )
     elif rebuild:
-        rebuild_reason = f"Normalised burden score {normalised:.1f}/100 crossed into {state.upper()} band"
+        rebuild_reason = (
+            f"Normalised burden score {normalised:.1f}/100 crossed into "
+            f"{state.upper()} band"
+        )
     else:
         rebuild_reason = None
 
     # Within-band intensity — ZBI bands: green <25, yellow 25-45, amber 46-68,
     # red 69+ (normalised /100).
-    if state == 'red':
+    if state == "red":
         intensity = min(1.0, max(0.0, (normalised - 69) / 30.0))
-    elif state == 'amber':
+    elif state == "amber":
         intensity = min(1.0, max(0.0, (normalised - 46) / 22.0))
-    elif state == 'yellow':
+    elif state == "yellow":
         intensity = min(1.0, max(0.0, (normalised - 25) / 20.0))
     else:
         intensity = min(1.0, max(0.0, normalised / 24.0))

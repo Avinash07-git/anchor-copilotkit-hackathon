@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * CopilotKitProtocolProof — registers all Anchor generative UI hooks.
  *
@@ -14,8 +13,14 @@ import {
   useCopilotReadable,
   useCopilotAdditionalInstructions,
 } from '@copilotkit/react-core';
+import A2UIRenderer, { type A2UISpec } from './A2UIRenderer';
 import { DriftScoreCard, PatternAlertCard, CombinedTriageView } from './A2UIComponents';
-import type { UIPlan } from '../types/uiPlan';
+import type {
+  CombinedTriageViewProps,
+  DriftScoreCardProps,
+  PatternAlertCardProps,
+  UIPlan,
+} from '../types/uiPlan';
 
 // ---------------------------------------------------------------------------
 // AG-UI shared state shape (mirrors backend _build_agent_state)
@@ -40,6 +45,15 @@ interface Props {
   plan: UIPlan | null;
 }
 
+const asDriftScoreCardProps = (args: unknown): DriftScoreCardProps =>
+  args as DriftScoreCardProps;
+
+const asPatternAlertCardProps = (args: unknown): PatternAlertCardProps =>
+  args as PatternAlertCardProps;
+
+const asCombinedTriageViewProps = (args: unknown): CombinedTriageViewProps =>
+  args as CombinedTriageViewProps;
+
 // ---------------------------------------------------------------------------
 // Component — renders nothing, just registers hooks
 // ---------------------------------------------------------------------------
@@ -49,7 +63,7 @@ export default function CopilotKitProtocolProof({ plan }: Props) {
   // ---- AG-UI: useCoAgent — live 3-score state sync ----------------------
   // Backend emits STATE_SNAPSHOT events; CopilotKit pushes them here.
   // Judges see scores update in real time without polling or WebSockets.
-  const { state: agentState } = useCoAgent<AnchorAgentState>({
+  useCoAgent<AnchorAgentState>({
     name: 'anchor_agent',
     initialState: {
       tom:    { score: 72, state: 'yellow', signals: [] },
@@ -118,7 +132,7 @@ Anchor is not a medical device.`,
         { name: 'active_signals',  type: 'object[]', required: false },
       ],
       handler: async () => {},
-      render: ({ args }) => <DriftScoreCard {...args} />,
+      render: ({ args }) => <DriftScoreCard {...asDriftScoreCardProps(args)} />,
     },
     []
   );
@@ -143,7 +157,7 @@ Anchor is not a medical device.`,
         { name: 'instrument',       type: 'string' },
       ],
       handler: async () => {},
-      render: ({ args }) => <PatternAlertCard {...args} />,
+      render: ({ args }) => <PatternAlertCard {...asPatternAlertCardProps(args)} />,
     },
     []
   );
@@ -160,7 +174,7 @@ Anchor is not a medical device.`,
         { name: 'disclaimer', type: 'string' },
       ],
       handler: async () => {},
-      render: ({ args }) => <CombinedTriageView {...args} />,
+      render: ({ args }) => <CombinedTriageView {...asCombinedTriageViewProps(args)} />,
     },
     []
   );
@@ -180,7 +194,7 @@ Anchor is not a medical device.`,
         { name: 'approve_label',  type: 'string',  required: false },
         { name: 'decline_label',  type: 'string',  required: false },
       ],
-      renderAndWait: ({ args, handler }) => (
+      renderAndWaitForResponse: ({ args, respond }) => (
         <div className="p-4 bg-white rounded-xl border border-anchor-mist-100 space-y-3 shadow-soft">
           <p className="text-[11px] uppercase tracking-wider font-semibold text-anchor-mist-400">
             Draft message for {args.recipient ?? 'family'}
@@ -194,14 +208,14 @@ Anchor is not a medical device.`,
           <div className="flex gap-2 pt-1">
             <button
               type="button"
-              onClick={() => handler.accept({ decision: 'approve' })}
+              onClick={() => respond?.({ decision: 'approve' })}
               className="px-4 py-1.5 bg-anchor-indigo-600 text-white rounded-lg text-[13px] font-semibold hover:bg-anchor-indigo-700 transition-colors"
             >
               {args.approve_label ?? 'Send it'}
             </button>
             <button
               type="button"
-              onClick={() => handler.reject()}
+              onClick={() => respond?.({ decision: 'decline' })}
               className="px-4 py-1.5 border border-anchor-mist-100 rounded-lg text-[13px] text-anchor-ink-600 hover:bg-anchor-cream-100 transition-colors"
             >
               {args.decline_label ?? 'Not now'}
@@ -209,6 +223,61 @@ Anchor is not a medical device.`,
           </div>
         </div>
       ),
+    },
+    []
+  );
+
+  // ---- Notion MCP + A2UI: render care log table in chat -------------------
+  useCopilotAction(
+    {
+      name: 'showNotionCareLogs',
+      description: 'Display the Anchor Care Log synced from Notion as an A2UI DataTable.',
+      parameters: [
+        { name: 'title',    type: 'string', description: 'Panel title' },
+        { name: 'subtitle', type: 'string', description: 'Subtitle / entry count' },
+        // entries and a2ui are serialised as JSON strings to stay within CopilotKit's supported types
+        { name: 'entries_json', type: 'string', description: 'JSON-encoded array of care log entries' },
+        { name: 'a2ui_json',    type: 'string', description: 'JSON-encoded A2UI spec' },
+      ],
+      handler: async () => {},
+      render: ({ args }) => {
+        let entries: Record<string, unknown>[] = [];
+        let spec: A2UISpec | undefined;
+        try { entries = JSON.parse(String(args.entries_json ?? '[]')); } catch { /* empty */ }
+        try { spec = JSON.parse(String(args.a2ui_json ?? '{}')); } catch { /* empty */ }
+
+        const fallbackSpec: A2UISpec = (spec?.root && spec?.nodes) ? spec : {
+          v: '0.8',
+          root: 'log',
+          nodes: {
+            log: {
+              type: 'DataTable',
+              props: {
+                title: String(args.title ?? 'Notion Care Log'),
+                columns: [
+                  { key: 'date',            label: 'Date' },
+                  { key: 'patient',         label: 'Patient' },
+                  { key: 'wellbeing_score', label: 'Score' },
+                  { key: 'alert_level',     label: 'Status' },
+                  { key: 'observation',     label: 'Observation' },
+                ],
+                rows: entries,
+              },
+            },
+          },
+        };
+        return (
+          <div className="mt-3 space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(176,111,170,0.55)]">
+              Notion MCP · A2UI
+            </p>
+            {args.subtitle && (
+              <p className="text-xs text-[rgba(176,111,170,0.65)]">{String(args.subtitle)}</p>
+            )}
+            <A2UIRenderer spec={fallbackSpec} />
+          </div>
+        );
+      },
     },
     []
   );

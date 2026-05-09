@@ -38,7 +38,6 @@ from app.mcp_tools.scoring import (
 )
 from app.mcp_tools.support import draft_talking_points, find_local_support
 
-
 # --- Per-signal action templates -----------------------------------------
 #
 # These map ONE concrete clinical signal id (the same ids the scoring
@@ -52,43 +51,92 @@ from app.mcp_tools.support import draft_talking_points, find_local_support
 
 _SIGNAL_ACTION_TEMPLATES: dict[str, str] = {
     # Tom — Heart Failure Symptom Monitoring Framework
-    "S1_dyspnea":            "Mention the recent shortness of breath \u2014 when it happens, how long it lasts.",
-    "S2_fatigue":            "Note the unusual fatigue and how it compares to Tom's normal.",
-    "S3_edema":              "Track ankle/leg swelling daily until the next visit (a quick photo helps).",
-    "S4_appetite_loss":      "Note the appetite drop \u2014 when it started, what he's eating now.",
-    "S5_general_unwellness": "Capture the 'just not himself' moments \u2014 vague but important context.",
-    "S6_orthopnea":          "Mention the trouble breathing while lying down \u2014 a key HF symptom.",
-    "S7_missed_medication":  "Confirm the medication schedule is still on track and ask about a pill organiser.",
-    "S8_weight_gain":        "Weigh Tom daily until the next appointment \u2014 sudden gain is a red flag.",
+    "S1_dyspnea": (
+        "Mention the recent shortness of breath — when it happens, "
+        "how long it lasts."
+    ),
+    "S2_fatigue": "Note the unusual fatigue and how it compares to Tom's normal.",
+    "S3_edema": (
+        "Track ankle/leg swelling daily until the next visit "
+        "(a quick photo helps)."
+    ),
+    "S4_appetite_loss": "Note the appetite drop — when it started, what he's eating now.",
+    "S5_general_unwellness": (
+        "Capture the 'just not himself' moments — vague but important context."
+    ),
+    "S6_orthopnea": "Mention the trouble breathing while lying down — a key HF symptom.",
+    "S7_missed_medication": (
+        "Confirm the medication schedule is still on track and ask about "
+        "a pill organiser."
+    ),
+    "S8_weight_gain": (
+        "Weigh Tom daily until the next appointment — sudden gain is a red flag."
+    ),
     # Helen — NPI subset (cognitive)
-    "C1_memory_repetition":  "Document the repeated-question moments with dates so the neurologist sees the pattern.",
-    "C2_disorientation":     "Note the disorientation specifics (about year/place/people) and frequency.",
-    "C3_safety_failure":     "Add a stove-safety check at home (timer or auto-shutoff) and note the lapse.",
-    "C4_agitation":          "Note when agitation happens and what calms it \u2014 useful for the care plan.",
-    "C5_withdrawal":         "Mention the withdrawal from usual activities \u2014 a subtle but real signal.",
-    "C6_sleep_disruption":   "Track sleep / sundowning patterns and bring the notes to the next visit.",
-    "C7_self_care_decline":  "Note specific self-care lapses (bathing, dressing) and how often.",
-    "C8_language_difficulty":"Document any word-finding moments \u2014 brief examples help the clinician.",
+    "C1_memory_repetition": (
+        "Document the repeated-question moments with dates so the neurologist "
+        "sees the pattern."
+    ),
+    "C2_disorientation": (
+        "Note the disorientation specifics (about year/place/people) "
+        "and frequency."
+    ),
+    "C3_safety_failure": (
+        "Add a stove-safety check at home (timer or auto-shutoff) "
+        "and note the lapse."
+    ),
+    "C4_agitation": "Note when agitation happens and what calms it — useful for the care plan.",
+    "C5_withdrawal": (
+        "Mention the withdrawal from usual activities — a subtle but real signal."
+    ),
+    "C6_sleep_disruption": (
+        "Track sleep / sundowning patterns and bring the notes to the next visit."
+    ),
+    "C7_self_care_decline": (
+        "Note specific self-care lapses (bathing, dressing) and how often."
+    ),
+    "C8_language_difficulty": (
+        "Document any word-finding moments — brief examples help the clinician."
+    ),
     # Sarah — ZBI-12 (caregiver)
-    "Z1_sleep":               "Protect sleep first \u2014 even one full night this week resets stress capacity.",
-    "Z2_emotional_exhaustion":"Acknowledge the exhaustion to one trusted person this week.",
-    "Z3_isolation":           "Reconnect with one person who isn't part of caregiving \u2014 a 10-minute call counts.",
-    "Z4_guilt":               "Notice the guilt without acting on it \u2014 it's a symptom, not a verdict.",
-    "Z5_loss_of_control":     "Pick ONE thing this week to hand off (a meal, a drive, an errand).",
-    "Z6_financial_stress":    "Look up one local respite voucher program (Family Caregiver Alliance has them).",
-    "Z7_anger":               "Anger is a valid signal \u2014 name it, don't act on it in the moment.",
-    "Z8_health_neglect":      "Book your own postponed appointment this week \u2014 even a 15-minute one.",
-    "Z9_relationship_strain": "Have one direct conversation with the person you've been short with.",
-    "Z10_hopelessness":       "Reach out for respite care today \u2014 even one weekend off matters.",
-    "Z11_fear":               "Write down what you're afraid of \u2014 it shrinks once it's on paper.",
-    "Z12_loss_of_personal_time": "Block 30 minutes for yourself this week and treat it as non-negotiable.",
+    "Z1_sleep": (
+        "Protect sleep first — even one full night this week resets stress capacity."
+    ),
+    "Z2_emotional_exhaustion": "Acknowledge the exhaustion to one trusted person this week.",
+    "Z3_isolation": (
+        "Reconnect with one person who isn't part of caregiving — a 10-minute "
+        "call counts."
+    ),
+    "Z4_guilt": "Notice the guilt without acting on it — it's a symptom, not a verdict.",
+    "Z5_loss_of_control": (
+        "Pick ONE thing this week to hand off (a meal, a drive, an errand)."
+    ),
+    "Z6_financial_stress": (
+        "Look up one local respite voucher program "
+        "(Family Caregiver Alliance has them)."
+    ),
+    "Z7_anger": "Anger is a valid signal — name it, don't act on it in the moment.",
+    "Z8_health_neglect": (
+        "Book your own postponed appointment this week — even a 15-minute one."
+    ),
+    "Z9_relationship_strain": (
+        "Have one direct conversation with the person you've been short with."
+    ),
+    "Z10_hopelessness": "Reach out for respite care today — even one weekend off matters.",
+    "Z11_fear": "Write down what you're afraid of — it shrinks once it's on paper.",
+    "Z12_loss_of_personal_time": (
+        "Block 30 minutes for yourself this week and treat it as non-negotiable."
+    ),
 }
 
 # Framework-level fallbacks — always included so the user gets at least
 # one "go to the clinician" action even on the gentlest signals.
 _FRAMEWORK_FALLBACK_BY_LENS: dict[str, str] = {
-    "body":      "Bring these observations to Tom's next cardiology visit (talking points ready below).",
-    "mind":      "Bring the dated observations to Helen's next neurology / primary-care visit.",
+    "body": (
+        "Bring these observations to Tom's next cardiology visit "
+        "(talking points ready below)."
+    ),
+    "mind": "Bring the dated observations to Helen's next neurology / primary-care visit.",
     "caregiver": "Loop in family backup \u2014 a draft message to Sarah's brother is ready below.",
 }
 
@@ -341,7 +389,10 @@ def _respite_card() -> dict:
             "person_id": "sarah",
             "title": "Respite options near you",
             "options": options,
-            "note": "These are local options Sarah might want to consider \u2014 no commitment, just information.",
+            "note": (
+                "These are local options Sarah might want to consider — "
+                "no commitment, just information."
+            ),
         },
     }
 
@@ -428,6 +479,11 @@ def _approval_prompt() -> dict:
                 "and Tom's not great either. Could you take her this weekend? "
                 "Even one night would help. Love you."
             ),
+            # The app knows WHO this draft is for, but the actual iMessage
+            # address is intentionally resolved outside the UI via the
+            # Spectrum bridge's environment configuration.
+            "recipient_label": "Mark",
+            "recipient_alias": "mark_brother",
             "approve_label": "Send draft to my Messages app",
             "edit_label": "Let me edit first",
             "decline_label": "Not yet",
@@ -465,7 +521,12 @@ def _triage_row(person_id: str, score_result: dict, pattern_match: dict | None) 
         "display_name": person["display_name"],
         "lens_label": LENS_LABELS[person["lens"]],
         "color": score_result["color"],
-        "headline": headline_lookup.get(person_id, pattern_match.get("title", "Worth attention") if pattern_match else "Worth attention"),
+        "headline": headline_lookup.get(
+            person_id,
+            pattern_match.get("title", "Worth attention")
+            if pattern_match
+            else "Worth attention",
+        ),
         "recommended_first_action": first_action.get(person_id, "Review the alert card"),
     }
 
@@ -715,20 +776,31 @@ def _single_alert(
         components.append(care_plan)
     components += [_drift_card(pid, scores[pid]) for pid in ("tom", "helen", "sarah")]
     components.append(_pattern_alert_card(matches[person_id]))
-    audience = {"tom": "Tom's cardiologist", "helen": "Helen's neurologist", "sarah": "Sarah"}[person_id]
-    components.append(_talking_points_card(person_id, audience))
     components.append(_signal_timeline(person_id))
     obs_meta = {
-        "tom":   ("Tom's recent symptom notes",
-                  "What's been logged about Tom in the last two weeks."),
-        "helen": ("Helen's recent moments \u2014 verbatim",
-                  "Each note as it was originally logged."),
-        "sarah": ("Your private notes \u2014 last 14 days",
-                  "What you've told Anchor, in your own words. Anchor reads them; nobody else does."),
+        "tom": (
+            "Tom's recent symptom notes",
+            "What's been logged about Tom in the last two weeks.",
+        ),
+        "helen": (
+            "Helen's recent moments — verbatim",
+            "Each note as it was originally logged.",
+        ),
+        "sarah": (
+            "Your private notes — last 14 days",
+            "What you've told Anchor, in your own words. Anchor reads them; "
+            "nobody else does.",
+        ),
     }[person_id]
     components.append(_observation_log_card(person_id, obs_meta[0], obs_meta[1]))
     if person_id == "helen":
         components.append(_contributor_map("helen"))
+    elif person_id == "sarah":
+        components.append(_respite_card())
+        components.append(_approval_prompt())
+    else:
+        audience = {"tom": "Tom's cardiologist", "helen": "Helen's neurologist"}[person_id]
+        components.append(_talking_points_card(person_id, audience))
     components.append(_generation_receipt("single_alert", components, plan_version, trigger))
     return {
         "layout": "single_alert",
@@ -842,6 +914,7 @@ def _combined_triage(
             components.append(_talking_points_card("tom", audience_for["tom"]))
         elif pid == "sarah":
             components.append(_respite_card())
+            components.append(_approval_prompt())
 
     components.append(_generation_receipt("combined_triage", components, plan_version, trigger))
     return {

@@ -4,16 +4,21 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Literal
+from typing import Any, Literal
 
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from app.agent import compose_plan
+from app.auth_security import create_session_token, verify_session_token
+from app.auth_service import authenticate_user, register_user, require_user
+from app.auth_store import UserRecord, ensure_user_store_ready
+from app.config import get_settings
 from app.data.demo_dataset import (
     HELEN_LOGS,
     PEOPLE,
@@ -27,10 +32,10 @@ from app.mcp_tools.observation_parser import (
     reset_store,
 )
 from app.mcp_tools.scoring import today_for, update_wellbeing_score
+from app.notion_mcp import get_recent_entries, log_care_entry
+from app.notifications import maybe_alert, reset_alerts
 from app.plan_builder import build_plan
 from app.shared_state import _state, _subscribers, broadcast, emit_steps
-
-load_dotenv()
 
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 
@@ -73,6 +78,7 @@ def _seed_demo_logs() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    ensure_user_store_ready(get_settings())
     _seed_demo_logs()
     _state["plan"] = build_plan(triggered_by="boot", plan_version=1)
     _state["plan_version"] = 1
@@ -99,6 +105,97 @@ app.add_middleware(
 )
 
 
+class AuthCredentials(BaseModel):
+    email: str = Field(..., min_length=3, max_length=320)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class AuthUser(BaseModel):
+    id: int
+    email: str
+
+
+def _auth_user_payload(user: UserRecord) -> dict[str, Any]:
+    return {"id": user.id, "email": user.email}
+
+
+def _set_session_cookie(response: Response, user: UserRecord) -> None:
+    settings = get_settings()
+    token = create_session_token(
+        user_id=user.id,
+        email=user.email,
+        secret_key=settings.auth_secret_key,
+        ttl_seconds=settings.auth_session_ttl_seconds,
+    )
+    response.set_cookie(
+        key=settings.auth_cookie_name,
+        value=token,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite="lax",
+        max_age=settings.auth_session_ttl_seconds,
+        path="/",
+    )
+
+
+def _clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(key=get_settings().auth_cookie_name, path="/")
+
+
+def _require_authenticated_user(request: Request) -> UserRecord:
+    settings = get_settings()
+    token = request.cookies.get(settings.auth_cookie_name)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
+        )
+
+    try:
+        payload = verify_session_token(token, settings.auth_secret_key)
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session.",
+        ) from exc
+
+    try:
+        return require_user(settings, user_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account no longer exists.",
+        ) from exc
+
+
+def _is_protected_path(path: str) -> bool:
+    protected_prefixes = (
+        "/family",
+        "/demo",
+        "/agui/stream",
+        "/api/plan",
+        "/api/chat",
+        "/api/approval",
+        "/api/copilotkit",
+        "/api/notion",
+    )
+    return any(path == prefix or path.startswith(f"{prefix}/") for prefix in protected_prefixes)
+
+
+@app.middleware("http")
+async def session_auth_middleware(request: Request, call_next):
+    if request.method == "OPTIONS" or not _is_protected_path(request.url.path):
+        return await call_next(request)
+
+    try:
+        request.state.current_user = _require_authenticated_user(request)
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+    return await call_next(request)
+
+
 # --- Static / read-only routes ---------------------------------------------
 
 
@@ -115,6 +212,46 @@ async def root() -> dict:
         "triggers": [t["id"] for t in TRIGGER_SEQUENCE],
         "current_plan_layout": (_state["plan"] or {}).get("layout"),
     }
+
+
+@app.post("/api/auth/register", response_model=AuthUser, status_code=status.HTTP_201_CREATED)
+async def auth_register(credentials: AuthCredentials, response: Response) -> dict[str, Any]:
+    try:
+        user = register_user(get_settings(), credentials.email, credentials.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    _set_session_cookie(response, user)
+    return _auth_user_payload(user)
+
+
+@app.post("/api/auth/login", response_model=AuthUser)
+async def auth_login(credentials: AuthCredentials, response: Response) -> dict[str, Any]:
+    try:
+        user = authenticate_user(get_settings(), credentials.email, credentials.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password.",
+        )
+
+    _set_session_cookie(response, user)
+    return _auth_user_payload(user)
+
+
+@app.post("/api/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def auth_logout(response: Response) -> Response:
+    _clear_session_cookie(response)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@app.get("/api/auth/me", response_model=AuthUser)
+async def auth_me(request: Request) -> dict[str, Any]:
+    return _auth_user_payload(_require_authenticated_user(request))
 
 
 @app.get("/family")
@@ -232,16 +369,19 @@ async def _run_trigger(trigger_id: str) -> dict:
     plan = await compose_plan(triggered_by=trigger_id, plan_version=_state["plan_version"])
     _state["plan"] = plan
     await broadcast("plan_updated", plan)
+
+    # Fire iMessage alerts for any person whose score dropped below 50
+    for pid, info in PEOPLE.items():
+        score = update_wellbeing_score(pid)
+        asyncio.create_task(maybe_alert(pid, info.get("display_name", pid.title()), score["wellbeing_score"]))
+
     return plan
 
 
 @app.post("/demo/reset")
 async def demo_reset() -> dict:
-    from app.mcp_tools.observation_parser import reset_store
-    reset_store()
-    _reset_chat_demo_cursor()
-    for person_id in PEOPLE:
-        update_wellbeing_score(person_id)
+    reset_alerts()
+    _seed_demo_logs()
     _state["plan_version"] += 1
     plan = build_plan(triggered_by="reset", plan_version=_state["plan_version"])
     _state["plan"] = plan
@@ -315,7 +455,11 @@ async def chat(message: ChatMessage) -> ChatReply:
                 "I couldn't tell who that was about — was that Tom, Helen, or you? "
                 "Reply with the name and I'll log it."
             ),
-            plan=_state["plan"] or build_plan(triggered_by="chat_clarify", plan_version=_state["plan_version"]),
+            plan=_state["plan"]
+            or build_plan(
+                triggered_by="chat_clarify",
+                plan_version=_state["plan_version"],
+            ),
         )
 
     today = _next_chat_day(person_id)
@@ -328,10 +472,24 @@ async def chat(message: ChatMessage) -> ChatReply:
         {
             "text": (
                 f"update_wellbeing_score({person_id}) → {score['state']} "
-                f"({score['wellbeing_score']}/100){' · rebuild fired' if score.get('rebuild_triggered') else ''}"
+                f"({score['wellbeing_score']}/100)"
+                f"{' · rebuild fired' if score.get('rebuild_triggered') else ''}"
             )
         },
     )
+    display_name = PEOPLE.get(person_id, {}).get("display_name", person_id.title())
+    asyncio.create_task(maybe_alert(person_id, display_name, score["wellbeing_score"]))
+
+    # Sync observation to Notion Care Log (fire-and-forget)
+    def _notion_sync():
+        log_care_entry(
+            person_id=person_id,
+            observer=message.observer,
+            observation=message.message,
+            wellbeing_score=score["wellbeing_score"],
+            alert_level=score.get("color", "green"),
+        )
+    asyncio.get_event_loop().run_in_executor(None, _notion_sync)
 
     _state["plan_version"] += 1
     plan = await compose_plan(triggered_by=f"chat:{person_id}", plan_version=_state["plan_version"])
@@ -356,7 +514,10 @@ def _all_days_for(person_id: str) -> list[dict]:
 def _build_chat_reply(person_id: str, signals: list[dict], score: dict) -> str:
     name = PEOPLE.get(person_id, {}).get("display_name", person_id.title())
     if not signals:
-        return f"Logged for {name}. Nothing in this note matched a tracked signal — tell me more if you'd like me to watch for something specific."
+        return (
+            f"Logged for {name}. Nothing in this note matched a tracked signal — "
+            "tell me more if you'd like me to watch for something specific."
+        )
     sig_labels = ", ".join(s["signal"].split("_", 1)[1].replace("_", " ") for s in signals[:3])
     suffix = f" · {len(signals) - 3} more" if len(signals) > 3 else ""
     rebuild = " · dashboard rebuilt" if score.get("rebuild_triggered") else ""
@@ -372,6 +533,18 @@ async def approval(decision: ApprovalDecision) -> dict:
     }
     await broadcast("agent_step", {"text": narrations[decision.decision]})
     return {"ok": True, "decision": decision.decision}
+
+
+# --- Notion endpoints -------------------------------------------------------
+
+
+@app.get("/api/notion/logs")
+async def notion_logs(limit: int = 20) -> dict:
+    """Return recent care log entries from the Notion Care Log database."""
+    entries = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: get_recent_entries(limit)
+    )
+    return {"entries": entries, "count": len(entries)}
 
 
 # --- AG-UI SSE stream -------------------------------------------------------
@@ -394,7 +567,7 @@ async def agui_stream(request: Request):
                     break
                 try:
                     msg = await asyncio.wait_for(queue.get(), timeout=15.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield {"event": "ping", "data": "{}"}
                     continue
                 yield {
@@ -415,4 +588,8 @@ try:
     mount_copilotkit(app, prefix="/api/copilotkit")
 except Exception as _ck_err:
     import sys
-    print(f"[anchor.ck_agent] CopilotKit mount failed ({_ck_err!r}); /api/copilotkit unavailable.", file=sys.stderr)
+    print(
+        f"[anchor.ck_agent] CopilotKit mount failed ({_ck_err!r}); "
+        "/api/copilotkit unavailable.",
+        file=sys.stderr,
+    )
