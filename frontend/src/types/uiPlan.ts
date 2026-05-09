@@ -103,6 +103,22 @@ export interface SignalTimelineProps {
   days: Array<{ day: number; color: Color; label: string }>;
 }
 
+export interface ObservationLogEntry {
+  day_label: string;
+  observer_display: string;
+  observer_where?: string;
+  note: string;
+  severity_color?: Color;
+}
+
+export interface ObservationLogCardProps {
+  person_id: PersonId;
+  title: string;
+  subtitle?: string;
+  entries: ObservationLogEntry[];
+  empty_state?: string;
+}
+
 export interface QuickActionCardProps {
   icon: 'phone' | 'message' | 'calendar' | 'checklist' | 'info';
   title: string;
@@ -144,6 +160,7 @@ export type ComponentType =
   | 'TalkingPointsCard'
   | 'RespiteOptionsCard'
   | 'SignalTimeline'
+  | 'ObservationLogCard'
   | 'QuickActionCard'
   | 'ApprovalPrompt'
   | 'CombinedTriageView';

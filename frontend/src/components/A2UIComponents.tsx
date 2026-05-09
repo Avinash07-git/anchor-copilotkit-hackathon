@@ -11,6 +11,7 @@ import {
   CombinedTriageViewProps,
   ContributorMapProps,
   DriftScoreCardProps,
+  ObservationLogCardProps,
   PatternAlertCardProps,
   QuickActionCardProps,
   RespiteOptionsCardProps,
@@ -393,6 +394,58 @@ export const RespiteOptionsCard = (p: RespiteOptionsCardProps) => (
   </Card>
 );
 
+// --- ObservationLogCard --------------------------------------------------
+
+const observationLeftRail = (color?: string): string => {
+  switch (color) {
+    case 'red':    return 'border-l-state-red';
+    case 'amber':  return 'border-l-state-amber';
+    case 'yellow': return 'border-l-state-yellow';
+    case 'green':  return 'border-l-state-green';
+    default:       return 'border-l-anchor-mist-200';
+  }
+};
+
+/**
+ * ObservationLogCard — verbatim observations as chat-style cards.
+ *
+ * Used wherever the user expects to see "the actual words that were
+ * logged" — Sarah's private notes, Tom's family-noted symptom log, and
+ * (when relevant) Helen's complement to the multi-observer ContributorMap.
+ */
+export const ObservationLogCard = (p: ObservationLogCardProps) => (
+  <Card>
+    <CardHeader icon="✎" title={p.title} subtitle={p.subtitle} />
+    {p.entries.length === 0 ? (
+      <p className="text-[13px] italic text-anchor-mist-400 px-1">{p.empty_state ?? 'Nothing logged yet.'}</p>
+    ) : (
+      <ul className="space-y-2.5">
+        {p.entries.map((e, i) => (
+          <li
+            key={i}
+            className={`relative bg-gradient-to-br from-anchor-cream-100 via-anchor-cream-50 to-white rounded-xl p-4 pl-5 text-[13px] shadow-sm border border-anchor-mist-100/70 border-l-4 ${observationLeftRail(e.severity_color)}`}
+          >
+            <div className="flex items-baseline justify-between gap-3 mb-1.5">
+              <span className="font-semibold text-anchor-ink-900 text-[13.5px]">
+                {e.observer_display}
+              </span>
+              <span className="text-[10.5px] uppercase tracking-[0.12em] font-semibold text-anchor-mist-400 shrink-0">
+                {e.day_label}
+              </span>
+            </div>
+            {e.observer_where && (
+              <p className="text-[11px] text-anchor-mist-400 mb-1.5">{e.observer_where}</p>
+            )}
+            <p className="text-anchor-ink-600 leading-relaxed italic">
+              “{e.note}”
+            </p>
+          </li>
+        ))}
+      </ul>
+    )}
+  </Card>
+);
+
 // --- SignalTimeline ------------------------------------------------------
 
 const dayCellClass = (color: string): string => {
@@ -598,6 +651,7 @@ export function renderComponent(c: { type: string; props: Record<string, unknown
     case 'ContributorMap':     return <ContributorMap {...(props as ContributorMapProps)} />;
     case 'RespiteOptionsCard': return <RespiteOptionsCard {...(props as RespiteOptionsCardProps)} />;
     case 'SignalTimeline':     return <SignalTimeline {...(props as SignalTimelineProps)} />;
+    case 'ObservationLogCard': return <ObservationLogCard {...(props as ObservationLogCardProps)} />;
     case 'QuickActionCard':    return <QuickActionCard {...(props as QuickActionCardProps)} />;
     case 'ApprovalPrompt':     return <ApprovalPrompt {...(props as ApprovalPromptProps)} />;
     case 'CombinedTriageView': return <CombinedTriageView {...(props as CombinedTriageViewProps)} />;

@@ -123,6 +123,31 @@ class SignalTimelineProps(BaseModel):
     days: list[dict]  # [{"day": 3, "color": "yellow", "label": "appetite"}, ...]
 
 
+class ObservationLogEntry(BaseModel):
+    """One verbatim entry in the observation log card."""
+
+    day_label: str  # "Day 7" or "Wed Apr 30"
+    observer_display: str  # "Sarah (you)" / "Mrs Chen (neighbour)"
+    observer_where: str = ""  # optional location context
+    note: str  # the original text, verbatim
+    severity_color: Color = "gray"  # tint matches the severity of the worst signal in this entry
+
+
+class ObservationLogCardProps(BaseModel):
+    """A chronological view of someone's recent observations — verbatim.
+
+    Used for Sarah's caregiver private notes (single observer) and for
+    Tom's family-wide observations. Helen has the richer ContributorMap
+    instead, because the cognitive story is multi-observer-rate-driven.
+    """
+
+    person_id: Literal["tom", "helen", "sarah"]
+    title: str
+    subtitle: str = ""
+    entries: list[ObservationLogEntry]
+    empty_state: str = "Nothing logged in this window yet."
+
+
 class QuickActionCardProps(BaseModel):
     """Generic action card — book appt, message family member, open checklist."""
 
@@ -171,6 +196,7 @@ ComponentType = Literal[
     "TalkingPointsCard",
     "RespiteOptionsCard",
     "SignalTimeline",
+    "ObservationLogCard",
     "QuickActionCard",
     "ApprovalPrompt",
     "CombinedTriageView",

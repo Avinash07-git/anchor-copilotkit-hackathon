@@ -346,6 +346,78 @@ def _respite_card() -> dict:
     }
 
 
+# --- Observation log card (verbatim notes, parallel to ContributorMap) ---
+
+_OBSERVER_DISPLAY: dict[str, tuple[str, str]] = {
+    # observer_id -> (display name, where context)
+    "sarah":     ("Sarah (you)",     "Primary caregiver \u00b7 home"),
+    "tom":       ("Tom",             "Self-report"),
+    "helen":     ("Helen",           "Self-report"),
+    "emma":      ("Emma",            "Granddaughter \u00b7 weekly visit"),
+    "mark":      ("Mark",            "Son \u00b7 in town this weekend"),
+    "mrs_chen":  ("Mrs Chen",        "Neighbour \u00b7 across the hall"),
+}
+
+
+def _severity_to_color(sev: int) -> str:
+    return {1: "yellow", 2: "amber", 3: "red"}.get(int(sev or 0), "gray")
+
+
+def _observation_log_card(
+    person_id: str,
+    title: str,
+    subtitle: str = "",
+    days_window: int = 14,
+    max_entries: int = 8,
+) -> dict:
+    """Verbatim observation log for one person.
+
+    Shows the user's actual logged words — the equivalent of Helen's
+    ContributorMap (which surfaces multi-observer notes) but framed for
+    a single-observer story (Sarah's private notes, Tom's self-reports).
+    Each entry shows day, who logged it, where they were, and the
+    original text — with a severity tint matching the worst signal in
+    that entry.
+    """
+    from app.mcp_tools.scoring import today_for
+
+    entries = list(_LOG_STORE.get(person_id, []))
+    today = today_for(person_id)
+    cutoff = today - (days_window - 1)
+    relevant = [e for e in entries if cutoff <= e["day"] <= today]
+    relevant.sort(key=lambda e: e["day"], reverse=True)
+
+    out_entries: list[dict] = []
+    for e in relevant[:max_entries]:
+        sigs = e.get("signals", [])
+        worst = max((s.get("severity", 0) for s in sigs), default=0)
+        observer_id = e.get("observer") or person_id
+        display, where = _OBSERVER_DISPLAY.get(
+            observer_id,
+            (observer_id.replace("_", " ").title(), "Observer"),
+        )
+        out_entries.append(
+            {
+                "day_label": f"Day {e['day']}",
+                "observer_display": display,
+                "observer_where": where,
+                "note": e.get("raw_text", ""),
+                "severity_color": _severity_to_color(worst),
+            }
+        )
+
+    return {
+        "type": "ObservationLogCard",
+        "props": {
+            "person_id": person_id,
+            "title": title,
+            "subtitle": subtitle,
+            "entries": out_entries,
+            "empty_state": f"No observations in the last {days_window} days.",
+        },
+    }
+
+
 def _approval_prompt() -> dict:
     return {
         "type": "ApprovalPrompt",
@@ -430,6 +502,15 @@ def _single_alert(
     audience = {"tom": "Tom's cardiologist", "helen": "Helen's neurologist", "sarah": "Sarah"}[person_id]
     components.append(_talking_points_card(person_id, audience))
     components.append(_signal_timeline(person_id))
+    obs_meta = {
+        "tom":   ("Tom's recent symptom notes",
+                  "What's been logged about Tom in the last two weeks."),
+        "helen": ("Helen's recent moments \u2014 verbatim",
+                  "Each note as it was originally logged."),
+        "sarah": ("Your private notes \u2014 last 14 days",
+                  "What you've told Anchor, in your own words. Anchor reads them; nobody else does."),
+    }[person_id]
+    components.append(_observation_log_card(person_id, obs_meta[0], obs_meta[1]))
     if person_id == "helen":
         components.append(_contributor_map("helen"))
     return {
@@ -486,14 +567,19 @@ def _combined_triage(
     severity_order = {"red": 0, "amber": 1, "yellow": 2, "green": 3, "gray": 4}
     pids_by_urgency = sorted(matches.keys(), key=lambda p: severity_order[scores[p]["color"]])
     rows = [_triage_row(pid, scores[pid], matches.get(pid)) for pid in pids_by_urgency]
+
+    # Dynamic title — don't lie about how many people are at risk.
+    n = len(pids_by_urgency)
+    word = {1: "One", 2: "Two", 3: "Three"}.get(n, str(n))
+    plural = "thing" if n == 1 else "things"
     triage = {
         "type": "CombinedTriageView",
         "props": {
-            "title": "Three things asking for your attention right now",
+            "title": f"{word} {plural} asking for your attention right now",
             "rationale": (
-                "Three patterns crossed at once. Each person's full evidence is below — "
-                "score, what Anchor noticed, the timeline of recent signals, and the "
-                "next step that actually moves the needle."
+                f"{word} pattern{'s' if n != 1 else ''} crossed at once. Each person's full "
+                "evidence is below \u2014 score, what Anchor noticed, the timeline of recent "
+                "signals, and the next step that actually moves the needle."
             ),
             "rows": rows,
             "disclaimer": DISCLAIMER,
@@ -506,16 +592,29 @@ def _combined_triage(
     components.extend(_drift_card(pid, scores[pid]) for pid in ("tom", "helen", "sarah"))
 
     # Per-person evidence bundles, in urgency order. Each bundle = the same
-    # depth single_alert would give: alert + timeline + the person's
-    # domain-specific support card.
+    # depth single_alert would give: alert + timeline + verbatim observation
+    # log + the person's domain-specific support card.
     audience_for = {
         "tom": "Tom's cardiologist",
         "helen": "Helen's neurologist",
         "sarah": "Sarah",
     }
+    obs_log_meta = {
+        # (title, subtitle) per person — framing differs because Helen has
+        # multi-observer notes while Sarah's are her own private notes.
+        "tom":   ("Tom's recent symptom notes",
+                  "What's been logged about Tom in the last two weeks."),
+        "helen": ("Helen's recent moments \u2014 verbatim",
+                  "Each note as it was originally logged."),
+        "sarah": ("Your private notes \u2014 last 14 days",
+                  "What you've told Anchor, in your own words. "
+                  "Anchor reads them; nobody else does."),
+    }
     for pid in pids_by_urgency:
         components.append(_pattern_alert_card(matches[pid]))
         components.append(_signal_timeline(pid))
+        title, subtitle = obs_log_meta[pid]
+        components.append(_observation_log_card(pid, title, subtitle))
         if pid == "helen":
             components.append(_contributor_map("helen"))
         elif pid == "tom":
