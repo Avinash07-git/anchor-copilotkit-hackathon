@@ -163,6 +163,8 @@ class ApprovalPromptProps(BaseModel):
 
     prompt: str  # "Should I send this draft to your brother asking for weekend backup?"
     draft_preview: str  # the actual message
+    recipient_label: str = ""  # human-readable recipient, shown in the UI
+    recipient_alias: str = ""  # frontend-side alias resolved by the Spectrum bridge
     approve_label: str = "Send it"
     edit_label: str = "Let me edit first"
     decline_label: str = "Not now"

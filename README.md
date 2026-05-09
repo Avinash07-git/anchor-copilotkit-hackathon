@@ -57,7 +57,11 @@ cd backend
 uv venv
 source .venv/bin/activate
 uv pip install -e .
-echo "GOOGLE_API_KEY=your-gemini-key-here" > .env   # optional — deterministic mode works without
+cat > .env <<'EOF'
+DATABASE_URL=sqlite:///./.data/anchor.db
+AUTH_SECRET_KEY=replace-this-with-a-long-random-secret
+GOOGLE_API_KEY=your-gemini-key-here
+EOF
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
@@ -72,6 +76,11 @@ and demo-day rate-limit safety):
 ANCHOR_FORCE_DETERMINISTIC=1 uv run uvicorn app.main:app --reload --port 8000
 ```
 
+Authentication notes:
+- `DATABASE_URL` is now required and currently supports sqlite URLs such as `sqlite:///./.data/anchor.db`
+- `AUTH_SECRET_KEY` is required for signing the HttpOnly session cookie
+- Register or sign in from the frontend before the live dashboard, AG-UI stream, or CopilotKit runtime will connect
+
 ### Frontend
 
 ```bash
@@ -81,6 +90,64 @@ npm run dev
 ```
 
 Visit <http://localhost:5173>.
+
+The frontend now opens on a secure email/password auth screen. After sign-in,
+it mounts the protected Anchor workspace, including the CopilotKit runtime and
+Spectrum-backed message approval flow. The score presentation layer still uses
+the Spectrum thresholds in the UI:
+- `50+` = stable
+- `20-49` = warning
+- `0-19` = red alarm
+
+### Photon Spectrum terminal bridge
+
+The official Photon docs you shared are for the `spectrum-ts` messaging SDK.
+Anchor now includes a small terminal-provider bridge that forwards Spectrum
+messages into the existing FastAPI `/api/chat` endpoint, so you can verify the
+SDK locally without changing the backend scoring logic.
+
+```bash
+cd frontend
+npm install
+ANCHOR_BACKEND_URL=http://127.0.0.1:8000 npm run spectrum:terminal
+```
+
+Type a text observation in the Spectrum terminal session and Anchor will reply
+with the same backend-driven response the web chat uses.
+
+### Photon Spectrum iMessage bridge
+
+Anchor also includes a frontend-side Node bridge for real iMessage sending via
+Spectrum. The browser calls the local bridge; the bridge holds the Spectrum
+credentials and resolves recipient aliases to real iMessage addresses.
+
+Required environment:
+
+```bash
+export SPECTRUM_PROJECT_ID=your-project-id
+export SPECTRUM_PROJECT_SECRET=your-project-secret
+export SPECTRUM_RECIPIENT_MARK_BROTHER=+14155551212   # actual iMessage address
+# optional when using dedicated senders
+export SPECTRUM_IMESSAGE_PHONE=+14155550000
+```
+
+Run the bridge:
+
+```bash
+cd frontend
+npm install
+npm run spectrum:imessage
+```
+
+Optional browser override:
+
+```bash
+export VITE_SPECTRUM_BRIDGE_URL=http://127.0.0.1:8787
+```
+
+With the bridge running, approving the caregiver draft in the dashboard sends
+the message through Spectrum iMessage instead of stopping at a demo-only
+approval acknowledgement.
 
 ## Demo flow
 

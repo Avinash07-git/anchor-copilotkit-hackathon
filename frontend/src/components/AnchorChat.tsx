@@ -58,6 +58,7 @@ export default function AnchorChat({ onSent }: { onSent?: () => void } = {}) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ message: trimmed, observer: 'sarah' }),
       });
       if (!res.ok) throw new Error(`Chat failed: HTTP ${res.status}`);

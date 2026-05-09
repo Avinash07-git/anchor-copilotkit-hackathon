@@ -24,7 +24,9 @@ import {
   colorLabel,
   colorToBadge,
 } from '../types/uiPlan';
+import { sendIMessageDraft } from '../lib/spectrumBridge';
 import {
+  alertBandState,
   cardChrome,
   deriveSparkline,
   friendlyDayLabel,
@@ -111,6 +113,78 @@ const signalChipTone = (color: string): string => {
   }
 };
 
+const alertBandScoreTone = (level: 'stable' | 'warning' | 'alarm'): string => {
+  switch (level) {
+    case 'alarm':   return 'text-state-red';
+    case 'warning': return 'text-state-amber';
+    default:        return 'text-anchor-ink-900';
+  }
+};
+
+const alertBandBadgeTone = (level: 'stable' | 'warning' | 'alarm'): string => {
+  switch (level) {
+    case 'alarm':
+      return 'bg-state-red-soft text-state-red border-state-red/30';
+    case 'warning':
+      return 'bg-state-amber-soft text-state-amber border-state-amber/30';
+    default:
+      return 'bg-state-green-soft text-state-green border-state-green/30';
+  }
+};
+
+const alertBandMarkerTone = (level: 'stable' | 'warning' | 'alarm'): string => {
+  switch (level) {
+    case 'alarm':   return 'bg-state-red';
+    case 'warning': return 'bg-state-amber';
+    default:        return 'bg-state-green';
+  }
+};
+
+const AlertBandMeter = ({ score }: { score: number }) => {
+  const status = alertBandState(score);
+  const markerLeft = `${Math.max(0, Math.min(100, score))}%`;
+
+  return (
+    <div className="mt-4 rounded-2xl border border-anchor-mist-100 bg-anchor-cream-50/80 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-anchor-mist-400">
+            Alert band
+          </p>
+          <p className="mt-1 text-[12px] text-anchor-mist-400 leading-snug">
+            Below 50 is warning. Below 20 is a red alarm.
+          </p>
+        </div>
+        <span
+          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${alertBandBadgeTone(status.level)}`}
+        >
+          {status.label}
+        </span>
+      </div>
+
+      <div className="relative mt-3">
+        {/* Fixed threshold bands make the presentation logic legible at a glance. */}
+        <div className="grid h-2.5 grid-cols-[20fr_30fr_50fr] overflow-hidden rounded-full border border-anchor-mist-100">
+          <span className="bg-state-red" />
+          <span className="bg-state-amber" />
+          <span className="bg-state-green" />
+        </div>
+        <span
+          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md ${alertBandMarkerTone(status.level)} ${status.level === 'alarm' ? 'alert-pulse' : ''}`}
+          style={{ left: markerLeft }}
+          aria-hidden
+        />
+      </div>
+
+      <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-anchor-mist-400">
+        <span>0-19 alarm</span>
+        <span>20-49 warning</span>
+        <span>50-100 stable</span>
+      </div>
+    </div>
+  );
+};
+
 export const DriftScoreCard = (p: DriftScoreCardProps) => {
   const accent = personAccent(p.person_id);
   const arrow = trendArrow(p.trend);
@@ -125,6 +199,7 @@ export const DriftScoreCard = (p: DriftScoreCardProps) => {
   const stroke = sparkStroke(p.color);
   const fill = sparkFill(p.color);
   const caption = friendlyStateCaption(p.color);
+  const alertBand = alertBandState(p.score);
   return (
     <section
       className={`group relative rounded-2xl border bg-white p-5 sm:p-6 transition-all hover:shadow-lift ${cardChrome(p.color)}`}
@@ -158,7 +233,9 @@ export const DriftScoreCard = (p: DriftScoreCardProps) => {
         {/* Score column — cockpit instrument. Tabular, slashed-zero, big. */}
         <div className="flex flex-col md:w-[200px] md:flex-shrink-0 md:border-l md:border-anchor-mist-100/70 md:pl-7">
           <div className="flex items-baseline gap-1.5">
-            <span className="font-cockpit text-[64px] md:text-[78px] font-semibold text-anchor-ink-900 leading-none">
+            <span
+              className={`font-cockpit text-[64px] md:text-[78px] font-semibold leading-none ${alertBandScoreTone(alertBand.level)}`}
+            >
               {p.score}
             </span>
             <span className="text-anchor-mist-400 text-sm font-mono">/ 100</span>
@@ -185,6 +262,7 @@ export const DriftScoreCard = (p: DriftScoreCardProps) => {
               </span>
             )}
           </div>
+          <AlertBandMeter score={p.score} />
         </div>
 
         {/* Trend chart column — takes the rest of the width */}
@@ -542,19 +620,50 @@ const APPROVAL_STATE_COPY: Record<Exclude<ApprovalState, 'pending'>, { icon: str
 export const ApprovalPrompt = (p: ApprovalPromptProps) => {
   const [state, setState] = useState<ApprovalState>('pending');
   const [busy, setBusy] = useState(false);
+  const [detail, setDetail] = useState<string | null>(null);
 
   const decide = async (decision: 'approve' | 'edit' | 'decline') => {
     if (busy) return;
     setBusy(true);
+    setDetail(null);
     try {
+      if (decision === 'approve') {
+        if (!p.recipient_alias) {
+          throw new Error('This draft does not include a Spectrum recipient alias.');
+        }
+
+        const result = await sendIMessageDraft({
+          recipientAlias: p.recipient_alias,
+          text: p.draft_preview,
+        });
+
+        setDetail(
+          `Delivered to ${p.recipient_label || p.recipient_alias} via iMessage.`,
+        );
+
+        const res = await fetch('/api/approval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            decision,
+            prompt: p.prompt,
+            note: `Spectrum iMessage sent to ${result.recipientAlias} in ${result.spaceId}.`,
+          }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setState('approved');
+        return;
+      }
+
       const res = await fetch('/api/approval', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ decision, prompt: p.prompt }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setState(decision === 'approve' ? 'approved' : decision === 'edit' ? 'editing' : 'declined');
-    } catch {
+      setState(decision === 'edit' ? 'editing' : 'declined');
+    } catch (error) {
+      setDetail(error instanceof Error ? error.message : String(error));
       setState('error');
     } finally {
       setBusy(false);
@@ -574,9 +683,16 @@ export const ApprovalPrompt = (p: ApprovalPromptProps) => {
         {p.draft_preview}
       </blockquote>
       {resolved ? (
-        <p className={`mt-4 text-[14px] font-semibold ${resolved.tone}`}>
-          <span aria-hidden className="mr-1">{resolved.icon}</span> {resolved.text}
-        </p>
+        <div className="mt-4">
+          <p className={`text-[14px] font-semibold ${resolved.tone}`}>
+            <span aria-hidden className="mr-1">{resolved.icon}</span> {resolved.text}
+          </p>
+          {detail && (
+            <p className="mt-1 text-[12px] text-anchor-mist-400 leading-relaxed">
+              {detail}
+            </p>
+          )}
+        </div>
       ) : (
         <div className="flex flex-wrap gap-2 mt-4">
           <button
@@ -773,10 +889,10 @@ export const GenerationReceipt = (p: GenerationReceiptProps) => {
 // tone controls — the "Copilot That Ships" moment the feedback called for.
 
 const STEP_TONE = {
-  red:    'border-state-red/35 bg-state-red-soft',
-  amber:  'border-state-amber/35 bg-state-amber-soft',
-  yellow: 'border-state-yellow/35 bg-state-yellow-soft',
-  green:  'border-state-green/35 bg-state-green-soft',
+  red:    'border-[#E05A7A]/50 bg-state-red-soft',
+  amber:  'border-[#E05A7A]/50 bg-state-amber-soft',
+  yellow: 'border-[#D4CFC3] bg-[#FEFCE8]',
+  green:  'border-[#D4CFC3] bg-white',
 } as const;
 
 type StepStatus = 'pending' | 'drafting' | 'sent' | 'done' | 'dismissed';
@@ -956,8 +1072,8 @@ const SurfacePill = ({
     onClick={onClick}
     className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all ${
       active
-        ? 'bg-white text-anchor-indigo-700 border-white shadow-soft'
-        : 'bg-white/10 text-white/90 border-white/25 hover:bg-white/20'
+        ? 'bg-white text-[#3B2FCF] border-white shadow-soft'
+        : 'bg-transparent text-white border-white hover:bg-white/10'
     }`}
   >
     {SURFACE_LABELS[id]}
@@ -1071,16 +1187,16 @@ export const CarePlanCard = (p: CarePlanCardProps) => {
       aria-label="Generated care plan"
       className="rounded-3xl border border-anchor-indigo-200 bg-white shadow-lift overflow-hidden"
     >
-      <header className="px-6 sm:px-8 pt-6 pb-4 bg-gradient-to-r from-anchor-indigo-600 via-anchor-indigo-500 to-anchor-coral-400 text-white">
-        <p className="text-[10.5px] uppercase tracking-[0.18em] font-bold opacity-90">
+      <header className="px-6 sm:px-8 pt-6 pb-4 text-white" style={{ background: 'linear-gradient(135deg, #5B4FD9 0%, #C75B8A 60%, #E05A7A 100%)' }}>
+        <p className="text-[10.5px] uppercase tracking-[0.18em] font-bold text-[#C4B8F0]">
           ⚡ Anchor generated this care command center
         </p>
         <h2 className="font-display text-[24px] sm:text-[26px] mt-1 leading-tight">
           {p.title}
         </h2>
-        <p className="text-[13px] opacity-90 mt-1.5 leading-relaxed">{p.subtitle}</p>
+        <p className="text-[13px] text-[#E8E4F8] mt-1.5 leading-relaxed">{p.subtitle}</p>
         <div className="mt-4">
-          <p className="text-[10.5px] uppercase tracking-[0.16em] font-bold opacity-80 mb-2">
+          <p className="text-[10.5px] uppercase tracking-[0.16em] font-bold text-[#D0C8F0] mb-2">
             Rebuild this interface for
           </p>
           <div className="flex flex-wrap gap-2">
@@ -1108,13 +1224,13 @@ export const CarePlanCard = (p: CarePlanCardProps) => {
                   {s.icon}
                 </span>
                 <div className="flex-1 min-w-[200px]">
-                  <p className="font-semibold text-[14px] text-anchor-ink-900 leading-snug">
+                  <p className="font-semibold text-[14px] text-[#1F1B2C] leading-snug">
                     {s.title}
                   </p>
-                  <p className="text-[12.5px] text-anchor-ink-100 mt-1 leading-relaxed">{s.detail}</p>
+                  <p className="text-[12.5px] text-[#6B6580] mt-1 leading-relaxed">{s.detail}</p>
                   {s.assignee_hint && (
-                    <p className="text-[10.5px] uppercase tracking-[0.14em] font-bold text-anchor-mist-400 mt-2">
-                      For: <span className="text-anchor-indigo-600">{s.assignee_hint}</span>
+                    <p className="text-[10.5px] uppercase tracking-[0.14em] font-bold text-[#9B94B8] mt-2">
+                      For: <span className="text-[#5B4FD9]">{s.assignee_hint}</span>
                     </p>
                   )}
                 </div>
@@ -1136,14 +1252,14 @@ export const CarePlanCard = (p: CarePlanCardProps) => {
                       <button
                         type="button"
                         onClick={() => setStatus((m) => ({ ...m, [s.id]: 'done' }))}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-anchor-mist-100 text-anchor-ink-600 text-[12px] font-semibold hover:bg-anchor-cream-100 transition-colors"
+                        className="px-3 py-1.5 rounded-lg bg-white border border-[#D4CFC3] text-[#1F1B2C] text-[12px] font-semibold hover:bg-anchor-cream-100 transition-colors"
                       >
                         Done already
                       </button>
                       <button
                         type="button"
                         onClick={() => setStatus((m) => ({ ...m, [s.id]: 'dismissed' }))}
-                        className="px-3 py-1.5 rounded-lg text-anchor-mist-400 text-[12px] hover:text-anchor-ink-600 transition-colors"
+                        className="px-3 py-1.5 rounded-lg text-[#C0BAD0] text-[12px] hover:text-anchor-ink-600 transition-colors"
                       >
                         Dismiss
                       </button>
@@ -1177,7 +1293,7 @@ export const CarePlanCard = (p: CarePlanCardProps) => {
           );
         })}
       </ol>
-      <p className="px-6 sm:px-8 py-3 text-[10.5px] text-anchor-mist-400 italic leading-relaxed border-t border-anchor-mist-100">
+      <p className="px-6 sm:px-8 py-3 text-[10.5px] text-[#A39E92] italic leading-relaxed border-t border-[#EDE8DE]">
         {p.disclaimer}
       </p>
     </section>

@@ -13,24 +13,27 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from app.data.demo_dataset import PEOPLE
 from app.mcp_tools.observation_parser import (
     log_observation,
     parse_observation_log,
 )
 from app.mcp_tools.patterns import check_pattern_match
 from app.mcp_tools.scoring import today_for, update_wellbeing_score
+from app.notion_mcp import get_recent_entries
 
 # ---------------------------------------------------------------------------
 # Agent metadata
 # ---------------------------------------------------------------------------
 
 AGENT_ID = "anchor_agent"
+DEFAULT_AGENT_ID = "default"
+RUNTIME_VERSION = "1.57.1"
 AGENT_DESCRIPTION = (
     "Reads current wellbeing scores for the Reynolds family and renders "
     "the appropriate Anchor cards — DriftScoreCard, PatternAlertCard, "
@@ -44,10 +47,48 @@ DISCLAIMER = (
 )
 
 _PEOPLE_META = {
-    "tom":   {"display_name": "Tom Reynolds",   "age": 68, "lens": "body",      "lens_label": "Body · Heart"},
-    "helen": {"display_name": "Helen Reynolds", "age": 84, "lens": "mind",      "lens_label": "Mind · Memory"},
-    "sarah": {"display_name": "Sarah Reynolds", "age": 42, "lens": "caregiver", "lens_label": "Caregiver Wellbeing"},
+    "tom": {
+        "display_name": "Tom Reynolds",
+        "age": 68,
+        "lens": "body",
+        "lens_label": "Body · Heart",
+    },
+    "helen": {
+        "display_name": "Helen Reynolds",
+        "age": 84,
+        "lens": "mind",
+        "lens_label": "Mind · Memory",
+    },
+    "sarah": {
+        "display_name": "Sarah Reynolds",
+        "age": 42,
+        "lens": "caregiver",
+        "lens_label": "Caregiver Wellbeing",
+    },
 }
+
+
+def _build_runtime_info_response() -> dict[str, Any]:
+    """Return the runtime metadata shape expected by CopilotKit 1.57.x."""
+    # CopilotKit's AgentRegistry reads a stable set of runtime flags during
+    # bootstrap. Returning the full contract here avoids client-side fallback
+    # behavior that can degrade into opaque startup failures.
+    agent_descriptor = {
+        "name": AGENT_ID,
+        "className": "ProxiedCopilotRuntimeAgent",
+        "description": AGENT_DESCRIPTION,
+    }
+    return {
+        "version": RUNTIME_VERSION,
+        "mode": "sse",
+        "audioFileTranscriptionEnabled": False,
+        "a2uiEnabled": True,
+        "openGenerativeUIEnabled": True,
+        "agents": {
+            DEFAULT_AGENT_ID: {**agent_descriptor, "name": DEFAULT_AGENT_ID},
+            AGENT_ID: agent_descriptor,
+        },
+    }
 
 # ---------------------------------------------------------------------------
 # Message extraction
@@ -94,7 +135,6 @@ async def _process_observation(user_message: str) -> None:
     """Log observation + rebuild plan + broadcast SSE — mirrors /api/chat."""
     # Import here to avoid circular import at module load time
     from app.agent import compose_plan
-    from app.plan_builder import build_plan
     from app.shared_state import _state, broadcast, emit_steps
 
     parsed = parse_observation_log(user_message)
@@ -233,7 +273,10 @@ def _build_tool_calls(scores: dict, patterns: dict) -> tuple[list[dict], bool]:
                     "color": s["color"],
                     "state": s["state"],
                     "trend": "down" if s["state"] not in ("green",) else "flat",
-                    "one_liner": s.get("rebuild_reason") or f"Wellbeing score {s['wellbeing_score']}/100",
+                    "one_liner": (
+                        s.get("rebuild_reason")
+                        or f"Wellbeing score {s['wellbeing_score']}/100"
+                    ),
                     "last_updated": "today",
                     "raw_score_label": s["raw_score_label"],
                     "instrument": s.get("instrument", ""),
@@ -281,9 +324,16 @@ def _build_text(scores: dict, all_not_green: bool) -> str:
     if not who_needs_watch:
         return "The Reynolds family is doing well right now — all three wellbeing scores are calm."
     if all_not_green:
-        return "All three family members have signals worth raising with their care team. Here's the combined picture:"
+        return (
+            "All three family members have signals worth raising with their care team. "
+            "Here's the combined picture:"
+        )
     names = " and ".join(who_needs_watch)
-    return f"Here's the current wellbeing picture. {names} {'has' if len(who_needs_watch) == 1 else 'have'} signals worth watching:"
+    verb = "has" if len(who_needs_watch) == 1 else "have"
+    return (
+        f"Here's the current wellbeing picture. {names} {verb} signals worth "
+        "watching:"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +394,52 @@ async def _stream_agent_run(
         })
         yield evt("TOOL_CALL_END", {"toolCallId": tc_id})
 
+    # --- Notion Care Log (A2UI table card) ---
+    try:
+        import asyncio as _asyncio
+        notion_entries = await _asyncio.get_event_loop().run_in_executor(
+            None, lambda: get_recent_entries(10)
+        )
+        if notion_entries:
+            tc_id = f"tc_{uuid.uuid4().hex[:10]}"
+            yield evt("TOOL_CALL_START", {
+                "toolCallId": tc_id,
+                "toolCallName": "showNotionCareLogs",
+                "parentMessageId": msg_id,
+            })
+            a2ui_spec = {
+                "v": "0.8",
+                "root": "notion_log",
+                "nodes": {
+                    "notion_log": {
+                        "type": "DataTable",
+                        "props": {
+                            "title": "Anchor Care Log · Notion",
+                            "columns": [
+                                {"key": "date",            "label": "Date"},
+                                {"key": "patient",         "label": "Patient"},
+                                {"key": "wellbeing_score", "label": "Score"},
+                                {"key": "alert_level",     "label": "Status"},
+                                {"key": "observation",     "label": "Observation"},
+                            ],
+                            "rows": notion_entries,
+                        },
+                    }
+                },
+            }
+            yield evt("TOOL_CALL_ARGS", {
+                "toolCallId": tc_id,
+                "delta": json.dumps({
+                    "title": "Notion Care Log",
+                    "subtitle": f"{len(notion_entries)} recent entries synced from Notion",
+                    "entries_json": json.dumps(notion_entries),
+                    "a2ui_json": json.dumps(a2ui_spec),
+                }),
+            })
+            yield evt("TOOL_CALL_END", {"toolCallId": tc_id})
+    except Exception:
+        pass  # Notion is best-effort — never crash the stream
+
     yield evt("RUN_FINISHED", {"runId": run_id, "threadId": thread_id})
 
 
@@ -353,13 +449,7 @@ async def _stream_agent_run(
 
 
 def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> None:
-    _INFO_RESPONSE = {
-        "version": "1.57.1",
-        "agents": {
-            "default": {"description": AGENT_DESCRIPTION, "capabilities": []},
-            AGENT_ID:  {"description": AGENT_DESCRIPTION, "capabilities": []},
-        },
-    }
+    _INFO_RESPONSE = _build_runtime_info_response()
 
     @fastapi_app.get(f"{prefix}/info", include_in_schema=False)
     async def copilotkit_info():
@@ -396,7 +486,13 @@ def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> N
             body = await request.json()
         except Exception:
             pass
-        print(f"[CK POST] body keys: {list(body.keys())} method={body.get('method')!r} msgs={len(body.get('messages', []))}", flush=True)
+        print(
+            "[CK POST] "
+            f"body keys: {list(body.keys())} "
+            f"method={body.get('method')!r} "
+            f"msgs={len(body.get('messages', []))}",
+            flush=True,
+        )
         if body.get("method") == "info":
             return JSONResponse(_INFO_RESPONSE)
         # Only stream if there's an actual user message to process

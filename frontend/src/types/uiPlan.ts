@@ -130,6 +130,8 @@ export interface QuickActionCardProps {
 export interface ApprovalPromptProps {
   prompt: string;
   draft_preview: string;
+  recipient_label?: string;
+  recipient_alias?: string;
   approve_label: string;
   edit_label: string;
   decline_label: string;

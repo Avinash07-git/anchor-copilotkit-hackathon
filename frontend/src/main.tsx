@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { CopilotKit } from '@copilotkit/react-core';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './styles/index.css';
 import '@copilotkit/react-ui/styles.css';
@@ -32,13 +32,10 @@ class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RootErrorBoundary>
-      <CopilotKit
-        runtimeUrl="/api/copilotkit"
-        showDevConsole={false}
-      >
+    <BrowserRouter>
+      <RootErrorBoundary>
         <App />
-      </CopilotKit>
-    </RootErrorBoundary>
+      </RootErrorBoundary>
+    </BrowserRouter>
   </React.StrictMode>,
 );
