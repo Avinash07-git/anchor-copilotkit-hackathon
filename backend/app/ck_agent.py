@@ -1,19 +1,13 @@
-"""CopilotKit REST endpoints — custom implementation bridging JS SDK v1.57.1 format.
+"""CopilotKit REST endpoints — AG-UI event stream for the anchor_agent.
 
-The Python copilotkit SDK (v0.1.88) returns agents as an array, but the JS SDK
-(v1.57.1) expects agents as an object keyed by agent name. Instead of using the
-Python SDK's add_fastapi_endpoint, we write three thin FastAPI routes ourselves:
-
-  GET  /api/copilotkit/info
-       → returns the correct v1 REST format so the JS SDK uses "rest" transport.
-
-  POST /api/copilotkit/agent/anchor_agent/run
-       → runs our LangGraph anchor_router, streams AG-UI events (SSE).
-
-  POST /api/copilotkit/agent/anchor_agent/state
-       → returns current agent state (empty — we don't persist thread state).
-
-All AG-UI event types follow the @ag-ui/client spec the JS SDK v1.57.1 consumes.
+When the user types in the CopilotPopup chat:
+  1. We extract the message from the CopilotKit request body
+  2. Parse it as an observation, log it, and rebuild the dashboard (same
+     pipeline as /api/chat) so the SSE dashboard updates live
+  3. Stream AG-UI events: STATE_SNAPSHOT → text → tool calls
+     (showDriftScore / showPatternAlert / showCombinedTriage)
+  4. The frontend's useCoAgent hook picks up STATE_SNAPSHOT and syncs
+     the three drift scores in real time
 """
 from __future__ import annotations
 
@@ -25,8 +19,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.data.demo_dataset import PEOPLE
-from app.mcp_tools.scoring import update_wellbeing_score
+from app.mcp_tools.observation_parser import (
+    log_observation,
+    parse_observation_log,
+)
 from app.mcp_tools.patterns import check_pattern_match
+from app.mcp_tools.scoring import today_for, update_wellbeing_score
 
 # ---------------------------------------------------------------------------
 # Agent metadata
@@ -52,10 +50,91 @@ _PEOPLE_META = {
 }
 
 # ---------------------------------------------------------------------------
-# Score + pattern helpers (same logic as the original ck_agent)
+# Message extraction
 # ---------------------------------------------------------------------------
 
-def _gather_state() -> dict[str, Any]:
+
+def _extract_user_message(body: dict) -> str | None:
+    """Pull the latest user message out of the CopilotKit request body."""
+    messages = body.get("messages", [])
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            content = m.get("content", "")
+            if isinstance(content, str):
+                return content.strip() or None
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = block.get("text", "").strip()
+                        if text:
+                            return text
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Observation processing (same pipeline as /api/chat)
+# ---------------------------------------------------------------------------
+
+
+def _infer_person(parsed: dict) -> str | None:
+    if parsed.get("person_hint"):
+        return parsed["person_hint"]
+    families = {"S": "tom", "C": "helen", "Z": "sarah"}
+    counts: dict[str, int] = {}
+    for sig in parsed.get("signals", []):
+        prefix = sig["signal"][:1]
+        if prefix in families:
+            counts[families[prefix]] = counts.get(families[prefix], 0) + 1
+    if counts:
+        return max(counts, key=counts.get)
+    return None
+
+
+async def _process_observation(user_message: str) -> None:
+    """Log observation + rebuild plan + broadcast SSE — mirrors /api/chat."""
+    # Import here to avoid circular import at module load time
+    from app.agent import compose_plan
+    from app.plan_builder import build_plan
+    from app.shared_state import _state, broadcast, emit_steps
+
+    parsed = parse_observation_log(user_message)
+    person_id = _infer_person(parsed)
+    if not person_id:
+        return  # can't route — skip silently, cards will still render
+
+    await emit_steps([
+        f'CopilotKit chat: "{user_message[:60]}{"…" if len(user_message) > 60 else ""}"',
+        f"parse_observation_log → {len(parsed['signals'])} signal(s) for {person_id}",
+    ])
+
+    today = today_for(person_id)
+    log_observation(person_id, "sarah", user_message, today, parsed["signals"])
+    await broadcast("agent_step", {"text": f"log_observation → {person_id} day {today}"})
+
+    score = update_wellbeing_score(person_id)
+    await broadcast("agent_step", {
+        "text": (
+            f"update_wellbeing_score({person_id}) → {score['state']} "
+            f"({score['wellbeing_score']}/100)"
+            f"{' · rebuild fired' if score.get('rebuild_triggered') else ''}"
+        )
+    })
+
+    _state["plan_version"] += 1
+    plan = await compose_plan(
+        triggered_by=f"ck_chat:{person_id}",
+        plan_version=_state["plan_version"],
+    )
+    _state["plan"] = plan
+    await broadcast("plan_updated", plan)
+
+
+# ---------------------------------------------------------------------------
+# State + tool call builders
+# ---------------------------------------------------------------------------
+
+
+def _gather_state() -> tuple[dict[str, Any], dict[str, Any]]:
     scores: dict[str, Any] = {}
     patterns: dict[str, Any] = {}
     for pid in ("tom", "helen", "sarah"):
@@ -70,7 +149,32 @@ def _gather_state() -> dict[str, Any]:
     return scores, patterns
 
 
-def _build_tool_calls(scores, patterns) -> list[dict]:
+def _build_agent_state(scores: dict) -> dict:
+    """Shape the state snapshot that useCoAgent consumes on the frontend."""
+    def _entry(pid: str) -> dict:
+        s = scores.get(pid)
+        if not s:
+            return {"score": 0, "state": "green", "signals": []}
+        return {
+            "score": s["wellbeing_score"],
+            "state": s["state"],
+            "signals": [d.get("id", "") for d in (s.get("active_domains") or [])[:3]],
+            "color": s["color"],
+            "raw_score_label": s["raw_score_label"],
+        }
+
+    return {
+        "tom":    _entry("tom"),
+        "helen":  _entry("helen"),
+        "sarah":  _entry("sarah"),
+        "combined": all(
+            scores.get(pid) and scores[pid]["state"] not in ("green",)
+            for pid in ("tom", "helen", "sarah")
+        ),
+    }
+
+
+def _build_tool_calls(scores: dict, patterns: dict) -> tuple[list[dict], bool]:
     all_not_green = all(
         scores.get(pid) and scores[pid]["state"] not in ("green",)
         for pid in ("tom", "helen", "sarah")
@@ -84,8 +188,7 @@ def _build_tool_calls(scores, patterns) -> list[dict]:
             m = _PEOPLE_META[pid]
             p = patterns.get(pid)
             headline = (
-                p["title"]
-                if p
+                p["title"] if p
                 else (s.get("rebuild_reason") or f"Wellbeing score {s['wellbeing_score']}/100")
                 if s else "Monitoring…"
             )
@@ -107,10 +210,10 @@ def _build_tool_calls(scores, patterns) -> list[dict]:
             "name": "showCombinedTriage",
             "args": {
                 "title": "All three family members need attention",
-                "rationale": "All three wellbeing thresholds crossed simultaneously — showing combined view.",
+                "rationale": "All three wellbeing thresholds crossed simultaneously.",
                 "rows": rows,
                 "disclaimer": DISCLAIMER,
-            }
+            },
         })
     else:
         for pid in ("tom", "helen", "sarah"):
@@ -135,10 +238,9 @@ def _build_tool_calls(scores, patterns) -> list[dict]:
                     "raw_score_label": s["raw_score_label"],
                     "instrument": s.get("instrument", ""),
                     "active_signals": [
-                        d.get("id", "")
-                        for d in (s.get("active_domains") or [])[:3]
+                        d.get("id", "") for d in (s.get("active_domains") or [])[:3]
                     ],
-                }
+                },
             })
             p = patterns.get(pid)
             if p:
@@ -165,12 +267,12 @@ def _build_tool_calls(scores, patterns) -> list[dict]:
                         "raw_score_label": s["raw_score_label"],
                         "rebuild_reason": s.get("rebuild_reason") or "",
                         "instrument": s.get("instrument", ""),
-                    }
+                    },
                 })
     return tool_calls, all_not_green
 
 
-def _build_text(scores, all_not_green) -> str:
+def _build_text(scores: dict, all_not_green: bool) -> str:
     who_needs_watch = [
         _PEOPLE_META[pid]["display_name"]
         for pid in ("tom", "helen", "sarah")
@@ -188,18 +290,39 @@ def _build_text(scores, all_not_green) -> str:
 # AG-UI SSE event stream
 # ---------------------------------------------------------------------------
 
-async def _stream_agent_run(run_id: str, thread_id: str) -> AsyncIterator[str]:
-    """Yield AG-UI Server-Sent Events for the anchor_router run."""
 
+async def _stream_agent_run(
+    run_id: str,
+    thread_id: str,
+    user_message: str | None,
+) -> AsyncIterator[str]:
+    """Yield AG-UI Server-Sent Events.
+
+    If a user_message was extracted from the request, we first process it
+    through the observation pipeline (log + score + dashboard rebuild) so
+    the CopilotKit chat ALSO drives the live dashboard, not just renders cards.
+    """
     def evt(event_type: str, payload: dict) -> str:
         return json.dumps({"type": event_type, **payload})
 
     yield evt("RUN_STARTED", {"runId": run_id, "threadId": thread_id})
 
-    # Gather wellbeing state (sync — fast, in-memory)
+    # Process the observation BEFORE gathering state so the state we read
+    # reflects the new observation.
+    if user_message:
+        try:
+            await _process_observation(user_message)
+        except Exception:
+            pass  # never crash the stream — dashboard update is best-effort
+
+    # Gather current wellbeing state (fast, in-memory)
     scores, patterns = _gather_state()
     tool_calls, all_not_green = _build_tool_calls(scores, patterns)
     text = _build_text(scores, all_not_green)
+    agent_state = _build_agent_state(scores)
+
+    # --- STATE_SNAPSHOT: useCoAgent picks this up on the frontend ---
+    yield evt("STATE_SNAPSHOT", {"snapshot": agent_state})
 
     # --- Text message ---
     msg_id = f"msg_{uuid.uuid4().hex[:10]}"
@@ -207,7 +330,7 @@ async def _stream_agent_run(run_id: str, thread_id: str) -> AsyncIterator[str]:
     yield evt("TEXT_MESSAGE_CONTENT", {"messageId": msg_id, "delta": text})
     yield evt("TEXT_MESSAGE_END", {"messageId": msg_id})
 
-    # --- Tool calls ---
+    # --- Tool calls (generative UI cards) ---
     for tc in tool_calls:
         tc_id = f"tc_{uuid.uuid4().hex[:10]}"
         yield evt("TOOL_CALL_START", {
@@ -228,21 +351,11 @@ async def _stream_agent_run(run_id: str, thread_id: str) -> AsyncIterator[str]:
 # Route registration
 # ---------------------------------------------------------------------------
 
+
 def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> None:
-    """Register CopilotKit-compatible REST routes on the FastAPI app.
-
-    Route shape matches what @copilotkit/react-core v1.57.1 expects when using
-    the "rest" transport (auto-detected because GET /info returns 200):
-
-        GET  {prefix}/info                  → agent registry (object, not array)
-        POST {prefix}/agent/{id}/run        → AG-UI event stream
-        POST {prefix}/agent/{id}/state      → empty state (no persistence)
-    """
-
     _INFO_RESPONSE = {
         "version": "1.57.1",
         "agents": {
-            # CopilotKit internally uses "default" for background listeners.
             "default": {"description": AGENT_DESCRIPTION, "capabilities": []},
             AGENT_ID:  {"description": AGENT_DESCRIPTION, "capabilities": []},
         },
@@ -253,12 +366,6 @@ def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> N
         return JSONResponse(_INFO_RESPONSE)
 
     async def _run_stream(request: Request) -> StreamingResponse:
-        """Shared helper: parse body, return AG-UI SSE stream with LF-only delimiters.
-
-        sse_starlette uses CRLF (\\r\\n\\r\\n) but @ag-ui/client's parseSSEStream
-        only splits on /\\n\\n/ (LF-only). We bypass EventSourceResponse and
-        write raw bytes so events are correctly delimited for the JS parser.
-        """
         body = {}
         try:
             body = await request.json()
@@ -266,9 +373,10 @@ def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> N
             pass
         run_id = body.get("runId") or f"run_{uuid.uuid4().hex[:12]}"
         thread_id = body.get("threadId") or f"thread_{uuid.uuid4().hex[:12]}"
+        user_message = _extract_user_message(body)
 
         async def event_gen():
-            async for json_str in _stream_agent_run(run_id, thread_id):
+            async for json_str in _stream_agent_run(run_id, thread_id, user_message):
                 yield f"data: {json_str}\n\n"
 
         return StreamingResponse(
@@ -283,25 +391,19 @@ def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> N
 
     @fastapi_app.post(f"{prefix}", include_in_schema=False)
     async def copilotkit_root_run(request: Request):
-        """Handle root runtime URL POST.
-
-        CopilotKit v2 auto-detection sends POST {method:"info"} here expecting
-        JSON (same as GET /info).  All other POSTs are agent runs → SSE stream.
-        """
         body = {}
         try:
             body = await request.json()
         except Exception:
             pass
-
         if body.get("method") == "info":
             return JSONResponse(_INFO_RESPONSE)
-
         run_id = body.get("runId") or f"run_{uuid.uuid4().hex[:12]}"
         thread_id = body.get("threadId") or f"thread_{uuid.uuid4().hex[:12]}"
+        user_message = _extract_user_message(body)
 
         async def event_gen():
-            async for json_str in _stream_agent_run(run_id, thread_id):
+            async for json_str in _stream_agent_run(run_id, thread_id, user_message):
                 yield f"data: {json_str}\n\n"
 
         return StreamingResponse(
@@ -312,12 +414,10 @@ def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> N
 
     @fastapi_app.post(f"{prefix}/agent/{{agent_id}}/run", include_in_schema=False)
     async def copilotkit_agent_run(agent_id: str, request: Request):
-        """Stream AG-UI events for an agent run (REST transport path)."""
         return await _run_stream(request)
 
     @fastapi_app.post(f"{prefix}/agent/{{agent_id}}/state", include_in_schema=False)
     async def copilotkit_agent_state(agent_id: str):
-        """Return empty agent state (we don't persist thread state)."""
         return JSONResponse({"state": {}})
 
     @fastapi_app.options(f"{prefix}", include_in_schema=False)

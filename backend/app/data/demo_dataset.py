@@ -62,6 +62,10 @@ PEOPLE: dict[People, dict] = {
 TOM_LOGS: list[tuple[int, str, str]] = [
     (3, "sarah", "Tom didn't finish dinner, said he wasn't hungry"),
     (6, "sarah", "He mentioned his legs feel a bit heavy"),
+    # Day 8: fatigue (S2, emphatic "really"/"barely" → sev=3 = 3 pts).
+    # Combined with day-6 edema (sev=1 = 1 pt) + day-10 missed med (sev=2 = 2 pts)
+    # → raw 6/24 = YELLOW at baseline. No high-risk combo (S3 stays at sev=1).
+    (8, "sarah", "Tom was really tired today, barely got off the couch"),
     (10, "sarah", "He forgot to take the evening blood thinner"),
 ]
 
@@ -76,10 +80,16 @@ HELEN_LOGS: list[tuple[int, str, str]] = [
     (-26, "sarah", "Helen forgot where she put her glasses"),
     # Week 3 baseline (days -21..-15) — one mild observation
     (-18, "tom", "Mom seemed a little slow today but fine"),
-    # Week 2 baseline (days -14..-8) — quiet
+    # Week 2 baseline (days -14..-8)
     (-12, "emma", "Grandma told the same story twice"),
-    # Week 1 baseline (days -7..-1) — quiet
+    # Week 1 baseline (days -7..-1)
     (-4, "sarah", "She forgot where she put her keys, found them quickly"),
+    # Week 0 (current week, days 0-6, today=6) — three mild observations
+    # that push this-week NPI score to ~7, drift = (7-6)/6*100 = 16.7% = YELLOW.
+    # UC2 trigger then fires 4 more observations → RED (rapid acceleration).
+    (1, "sarah", "Helen told me the same story twice today"),
+    (3, "emma", "She asked me what day it was when I called"),
+    (5, "sarah", "She seemed a bit withdrawn today, sat alone most of the morning"),
 ]
 
 # SARAH — 14-day rolling window. Cumulative ZBI score normalises low (~6/100,

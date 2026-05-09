@@ -641,7 +641,10 @@ def build_plan(triggered_by: str | None = None, plan_version: int = 1) -> dict[s
         # Backfill the score with person_id for triage_row ergonomics
         scores[pid]["person_id"] = pid
         m = check_pattern_match(pid)
-        if m and scores[pid]["rebuild_triggered"]:
+        # Only elevate to single_alert / combined_triage for AMBER or RED.
+        # YELLOW signals stay visible as DriftScoreCards in calm_dashboard —
+        # they're "worth watching" but not yet a layout-changing event.
+        if m and scores[pid]["color"] in ("amber", "red"):
             matches[pid] = m
 
     n = len(matches)

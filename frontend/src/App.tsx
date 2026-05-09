@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useAGUIStream } from './hooks/useAGUIStream';
 import { renderLayout } from './components/Layouts';
 import CopilotKitProtocolProof from './components/CopilotKitProtocolProof';
-import { CopilotPopup } from '@copilotkit/react-core/v2';
+import FloatingChatDrawer from './components/FloatingChatDrawer';
+import { CopilotPopup } from '@copilotkit/react-ui';
 
 /**
  * Anchor — App shell.
@@ -189,17 +190,20 @@ export default function App() {
       {/* Reasoning ribbon — fixed thin bar above the chat pill */}
       <ReasoningRibbon steps={steps} />
 
-      {/* CopilotKit Generative UI popup — the real chat where AI renders cards */}
+      {/* CopilotKit Generative UI popup — renders showDriftScore / showPatternAlert cards */}
       <CopilotPopup
-        agentId="anchor_agent"
         defaultOpen={false}
         labels={{
-          modalHeaderTitle: 'Anchor',
-          chatInputPlaceholder: 'Ask about Tom, Helen, or Sarah…',
+          title: 'Anchor AI',
+          initial: 'Ask about Tom, Helen, or Sarah — or describe what you noticed.',
+          placeholder: 'e.g. "Tom\'s ankles look swollen and he barely ate"',
         }}
       />
 
-      {/* CopilotKit protocol hooks — invisible, registers useComponent + useHumanInTheLoop */}
+      {/* Custom "Tell Anchor" drawer — posts to /api/chat → SSE dashboard rebuild */}
+      <FloatingChatDrawer />
+
+      {/* Protocol hooks — useCoAgent + useCopilotAction (invisible, no DOM) */}
       <CopilotKitProtocolProof plan={livePlan} />
 
       <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }`}</style>

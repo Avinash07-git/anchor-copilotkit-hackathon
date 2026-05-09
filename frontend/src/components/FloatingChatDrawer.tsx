@@ -37,7 +37,7 @@ export default function FloatingChatDrawer() {
           open
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 translate-y-4 pointer-events-none'
-        } bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] max-h-[calc(100vh-8rem)]`}
+        } bottom-24 left-6 w-[calc(100vw-3rem)] sm:w-[400px] max-h-[calc(100vh-8rem)]`}
         role="dialog"
         aria-label="Tell Anchor"
         aria-hidden={!open}
@@ -60,7 +60,7 @@ export default function FloatingChatDrawer() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`fixed bottom-6 right-6 z-50 inline-flex items-center gap-2.5 px-5 py-3 rounded-full shadow-lift focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 transition-all ${
+        className={`fixed bottom-6 left-6 z-50 inline-flex items-center gap-2.5 px-5 py-3 rounded-full shadow-lift focus:outline-none focus:ring-4 focus:ring-anchor-indigo-200 transition-all ${
           open
             ? 'bg-white text-anchor-ink-600 border border-anchor-mist-100 hover:bg-anchor-cream-100'
             : 'bg-anchor-indigo-600 text-white hover:bg-anchor-indigo-700 hover:scale-105'
