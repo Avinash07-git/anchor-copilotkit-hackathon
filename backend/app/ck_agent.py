@@ -1,61 +1,49 @@
-"""CopilotKit / LangGraph agent — Anchor's Generative UI backend layer.
+"""CopilotKit REST endpoints — custom implementation bridging JS SDK v1.57.1 format.
 
-anchor_agent is a LangGraphAGUIAgent that:
-  1. Reads current wellbeing scores from the in-memory PEOPLE store
-  2. Emits AIMessage tool calls matching the frontend useComponent registrations:
-       - showDriftScore    → renders DriftScoreCard in the CopilotPopup chat
-       - showPatternAlert  → renders PatternAlertCard with peer-reviewed citation
-       - showCombinedTriage → renders CombinedTriageView when all three lenses fire
-       - confirmFamilyMessage → useHumanInTheLoop approval gate
-  3. Served via real CopilotKit FastAPI endpoint at /api/copilotkit
+The Python copilotkit SDK (v0.1.88) returns agents as an array, but the JS SDK
+(v1.57.1) expects agents as an object keyed by agent name. Instead of using the
+Python SDK's add_fastapi_endpoint, we write three thin FastAPI routes ourselves:
 
-The backend is rule-based (no LLM needed) so it NEVER fails during the demo.
-Gemini can be layered in later via the system prompt, but the tool-call path
-is deterministic and always correct.
+  GET  /api/copilotkit/info
+       → returns the correct v1 REST format so the JS SDK uses "rest" transport.
+
+  POST /api/copilotkit/agent/anchor_agent/run
+       → runs our LangGraph anchor_router, streams AG-UI events (SSE).
+
+  POST /api/copilotkit/agent/anchor_agent/state
+       → returns current agent state (empty — we don't persist thread state).
+
+All AG-UI event types follow the @ag-ui/client spec the JS SDK v1.57.1 consumes.
 """
 from __future__ import annotations
 
+import json
 import uuid
-from typing import Annotated, Any
+from typing import Any, AsyncIterator
 
-from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.runnables import RunnableConfig
-from langgraph.graph import END, StateGraph
-from langgraph.graph.message import add_messages
-from typing_extensions import TypedDict
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 
-from copilotkit import CopilotKitRemoteEndpoint, LangGraphAGUIAgent
-from copilotkit.integrations.fastapi import add_fastapi_endpoint
-from copilotkit.langgraph import CopilotKitState, copilotkit_emit_state
-
-# --- Monkey-patch: LangGraphAGUIAgent.dict_repr() calls super().dict_repr()
-# but LangGraphAgent (its parent) inherits from object, not Agent, so the
-# method doesn't exist. Patch it to return the correct shape directly.
-def _fixed_agui_dict_repr(self):
-    return {
-        "name": self.name,
-        "description": self.description or "",
-        "type": "langgraph_agui",
-    }
-LangGraphAGUIAgent.dict_repr = _fixed_agui_dict_repr
-
+from app.data.demo_dataset import PEOPLE
+from app.mcp_tools.scoring import update_wellbeing_score
+from app.mcp_tools.patterns import check_pattern_match
 
 # ---------------------------------------------------------------------------
-# State
+# Agent metadata
 # ---------------------------------------------------------------------------
 
-class AnchorState(CopilotKitState):
-    """LangGraph state.
+AGENT_ID = "anchor_agent"
+AGENT_DESCRIPTION = (
+    "Reads current wellbeing scores for the Reynolds family and renders "
+    "the appropriate Anchor cards — DriftScoreCard, PatternAlertCard, "
+    "CombinedTriageView — directly in the chat via Generative UI."
+)
 
-    CopilotKitState is a dict subclass that adds the `copilotkit` metadata key.
-    We add `messages` (the AG-UI conversation thread) here.
-    """
-    messages: Annotated[list, add_messages]
-
-
-# ---------------------------------------------------------------------------
-# People metadata (static, matches the demo dataset)
-# ---------------------------------------------------------------------------
+DISCLAIMER = (
+    "Anchor is not a medical device. It surfaces patterns from what you tell it "
+    "so you can share them with your healthcare team. Always consult a qualified "
+    "clinician for medical decisions."
+)
 
 _PEOPLE_META = {
     "tom":   {"display_name": "Tom Reynolds",   "age": 68, "lens": "body",      "lens_label": "Body · Heart"},
@@ -63,39 +51,11 @@ _PEOPLE_META = {
     "sarah": {"display_name": "Sarah Reynolds", "age": 42, "lens": "caregiver", "lens_label": "Caregiver Wellbeing"},
 }
 
-DISCLAIMER = "Anchor is not a medical device. It surfaces patterns from what you tell it so you can share them with your healthcare team. Always consult a qualified clinician for medical decisions."
-
-
-def _tc(name: str, args: dict) -> dict:
-    """Build a LangChain-compatible tool_call dict."""
-    return {
-        "name": name,
-        "args": args,
-        "id": f"tc_{uuid.uuid4().hex[:10]}",
-        "type": "tool_call",
-    }
-
-
 # ---------------------------------------------------------------------------
-# Graph node — read state, build tool calls, return AI message
+# Score + pattern helpers (same logic as the original ck_agent)
 # ---------------------------------------------------------------------------
 
-async def anchor_router(state: AnchorState, config: RunnableConfig) -> dict:
-    """Core node: read wellbeing state → emit the right card tool calls.
-
-    This node is invoked every time the user sends a message. It:
-    1. Refreshes wellbeing scores from the in-memory store
-    2. Checks whether any pattern alert was triggered
-    3. Emits showDriftScore / showPatternAlert / showCombinedTriage tool calls
-       so the frontend useComponent hooks render the cards in the CopilotPopup
-
-    No LLM required — rule-based, always reliable for the demo.
-    """
-    from app.data.demo_dataset import PEOPLE
-    from app.mcp_tools.scoring import update_wellbeing_score
-    from app.mcp_tools.patterns import check_pattern_match
-
-    # Refresh all scores
+def _gather_state() -> dict[str, Any]:
     scores: dict[str, Any] = {}
     patterns: dict[str, Any] = {}
     for pid in ("tom", "helen", "sarah"):
@@ -107,32 +67,17 @@ async def anchor_router(state: AnchorState, config: RunnableConfig) -> dict:
             patterns[pid] = check_pattern_match(pid)
         except Exception:
             patterns[pid] = None
+    return scores, patterns
 
-    # Emit shared state to useAgent / useCoAgent on the frontend
-    agent_state = {
-        pid: {
-            "score": scores[pid]["wellbeing_score"] if scores[pid] else 75,
-            "state": scores[pid]["state"] if scores[pid] else "green",
-            "signals": [
-                d.get("id", "")
-                for d in (scores[pid].get("active_domains") or [] if scores[pid] else [])
-                if d.get("severity", 0) >= 2
-            ][:5],
-        }
+
+def _build_tool_calls(scores, patterns) -> list[dict]:
+    all_not_green = all(
+        scores.get(pid) and scores[pid]["state"] not in ("green",)
         for pid in ("tom", "helen", "sarah")
-    }
-    agent_state["combined"] = all(
-        agent_state[p]["state"] != "green" for p in ("tom", "helen", "sarah")
     )
-    await copilotkit_emit_state(config, {**state, **agent_state})
-
-    # --- Decide which cards to show ---
-
-    all_not_green = agent_state["combined"]
     tool_calls: list[dict] = []
 
     if all_not_green:
-        # Combined triage view
         rows = []
         for pid in ("tom", "helen", "sarah"):
             s = scores[pid]
@@ -142,8 +87,7 @@ async def anchor_router(state: AnchorState, config: RunnableConfig) -> dict:
                 p["title"]
                 if p
                 else (s.get("rebuild_reason") or f"Wellbeing score {s['wellbeing_score']}/100")
-                if s
-                else "Monitoring…"
+                if s else "Monitoring…"
             )
             rows.append({
                 "person_id": pid,
@@ -157,45 +101,45 @@ async def anchor_router(state: AnchorState, config: RunnableConfig) -> dict:
                     else "Review with healthcare team"
                 ),
             })
-        # Sort: RED first, then by urgency
         order = {"red": 0, "amber": 1, "yellow": 2, "green": 3, "gray": 4}
         rows.sort(key=lambda r: order.get(r["color"], 4))
-
-        tool_calls.append(_tc("showCombinedTriage", {
-            "title": "All three family members need attention",
-            "rationale": "All three wellbeing thresholds crossed simultaneously — showing combined view.",
-            "rows": rows,
-            "disclaimer": DISCLAIMER,
-        }))
-
+        tool_calls.append({
+            "name": "showCombinedTriage",
+            "args": {
+                "title": "All three family members need attention",
+                "rationale": "All three wellbeing thresholds crossed simultaneously — showing combined view.",
+                "rows": rows,
+                "disclaimer": DISCLAIMER,
+            }
+        })
     else:
-        # Individual score cards (+ pattern alerts where triggered)
         for pid in ("tom", "helen", "sarah"):
             s = scores[pid]
             m = _PEOPLE_META[pid]
             if not s:
                 continue
-
-            tool_calls.append(_tc("showDriftScore", {
-                "person_id": pid,
-                "display_name": m["display_name"],
-                "age": m["age"],
-                "lens": m["lens"],
-                "lens_label": m["lens_label"],
-                "score": s["wellbeing_score"],
-                "color": s["color"],
-                "state": s["state"],
-                "trend": "down" if s["state"] not in ("green",) else "flat",
-                "one_liner": s.get("rebuild_reason") or f"Wellbeing score {s['wellbeing_score']}/100",
-                "last_updated": "today",
-                "raw_score_label": s["raw_score_label"],
-                "instrument": s.get("instrument", ""),
-                "active_signals": [
-                    d.get("id", "")
-                    for d in (s.get("active_domains") or [])[:3]
-                ],
-            }))
-
+            tool_calls.append({
+                "name": "showDriftScore",
+                "args": {
+                    "person_id": pid,
+                    "display_name": m["display_name"],
+                    "age": m["age"],
+                    "lens": m["lens"],
+                    "lens_label": m["lens_label"],
+                    "score": s["wellbeing_score"],
+                    "color": s["color"],
+                    "state": s["state"],
+                    "trend": "down" if s["state"] not in ("green",) else "flat",
+                    "one_liner": s.get("rebuild_reason") or f"Wellbeing score {s['wellbeing_score']}/100",
+                    "last_updated": "today",
+                    "raw_score_label": s["raw_score_label"],
+                    "instrument": s.get("instrument", ""),
+                    "active_signals": [
+                        d.get("id", "")
+                        for d in (s.get("active_domains") or [])[:3]
+                    ],
+                }
+            })
             p = patterns.get(pid)
             if p:
                 signals = [
@@ -206,77 +150,179 @@ async def anchor_router(state: AnchorState, config: RunnableConfig) -> dict:
                     }
                     for d in (s.get("active_domains") or [])[:3]
                 ]
-                tool_calls.append(_tc("showPatternAlert", {
-                    "person_id": pid,
-                    "pattern_id": p.get("pattern_id", ""),
-                    "severity_color": s["color"],
-                    "title": p.get("title", "Pattern detected"),
-                    "why_it_matters": p.get("why_it_matters", ""),
-                    "signals": signals,
-                    "suggested_actions": (p.get("suggested_actions") or [])[:3],
-                    "disclaimer": DISCLAIMER,
-                    "citation": p.get("citation", ""),
-                    "raw_score_label": s["raw_score_label"],
-                    "rebuild_reason": s.get("rebuild_reason") or "",
-                    "instrument": s.get("instrument", ""),
-                }))
+                tool_calls.append({
+                    "name": "showPatternAlert",
+                    "args": {
+                        "person_id": pid,
+                        "pattern_id": p.get("pattern_id", ""),
+                        "severity_color": s["color"],
+                        "title": p.get("title", "Pattern detected"),
+                        "why_it_matters": p.get("why_it_matters", ""),
+                        "signals": signals,
+                        "suggested_actions": (p.get("suggested_actions") or [])[:3],
+                        "disclaimer": DISCLAIMER,
+                        "citation": p.get("citation", ""),
+                        "raw_score_label": s["raw_score_label"],
+                        "rebuild_reason": s.get("rebuild_reason") or "",
+                        "instrument": s.get("instrument", ""),
+                    }
+                })
+    return tool_calls, all_not_green
 
-    # Compose a calm text intro + the tool calls in one AI message
+
+def _build_text(scores, all_not_green) -> str:
     who_needs_watch = [
         _PEOPLE_META[pid]["display_name"]
         for pid in ("tom", "helen", "sarah")
         if scores.get(pid) and scores[pid]["state"] not in ("green",)
     ]
     if not who_needs_watch:
-        text = "The Reynolds family is doing well right now — all three wellbeing scores are calm."
-    elif all_not_green:
-        text = "All three family members have signals worth raising with their care team. Here's the combined picture:"
-    else:
-        names = " and ".join(who_needs_watch)
-        text = f"Here's the current wellbeing picture. {names} {'has' if len(who_needs_watch) == 1 else 'have'} signals worth watching:"
-
-    return {"messages": [AIMessage(content=text, tool_calls=tool_calls)]}
+        return "The Reynolds family is doing well right now — all three wellbeing scores are calm."
+    if all_not_green:
+        return "All three family members have signals worth raising with their care team. Here's the combined picture:"
+    names = " and ".join(who_needs_watch)
+    return f"Here's the current wellbeing picture. {names} {'has' if len(who_needs_watch) == 1 else 'have'} signals worth watching:"
 
 
 # ---------------------------------------------------------------------------
-# Build the compiled graph
+# AG-UI SSE event stream
 # ---------------------------------------------------------------------------
 
-def _build_graph() -> Any:
-    builder: StateGraph = StateGraph(AnchorState)
-    builder.add_node("anchor_router", anchor_router)
-    builder.set_entry_point("anchor_router")
-    builder.add_edge("anchor_router", END)
-    return builder.compile()
+async def _stream_agent_run(run_id: str, thread_id: str) -> AsyncIterator[str]:
+    """Yield AG-UI Server-Sent Events for the anchor_router run."""
 
+    def evt(event_type: str, payload: dict) -> str:
+        return json.dumps({"type": event_type, **payload})
 
-_graph = _build_graph()
+    yield evt("RUN_STARTED", {"runId": run_id, "threadId": thread_id})
+
+    # Gather wellbeing state (sync — fast, in-memory)
+    scores, patterns = _gather_state()
+    tool_calls, all_not_green = _build_tool_calls(scores, patterns)
+    text = _build_text(scores, all_not_green)
+
+    # --- Text message ---
+    msg_id = f"msg_{uuid.uuid4().hex[:10]}"
+    yield evt("TEXT_MESSAGE_START", {"messageId": msg_id, "role": "assistant"})
+    yield evt("TEXT_MESSAGE_CONTENT", {"messageId": msg_id, "delta": text})
+    yield evt("TEXT_MESSAGE_END", {"messageId": msg_id})
+
+    # --- Tool calls ---
+    for tc in tool_calls:
+        tc_id = f"tc_{uuid.uuid4().hex[:10]}"
+        yield evt("TOOL_CALL_START", {
+            "toolCallId": tc_id,
+            "toolCallName": tc["name"],
+            "parentMessageId": msg_id,
+        })
+        yield evt("TOOL_CALL_ARGS", {
+            "toolCallId": tc_id,
+            "delta": json.dumps(tc["args"]),
+        })
+        yield evt("TOOL_CALL_END", {"toolCallId": tc_id})
+
+    yield evt("RUN_FINISHED", {"runId": run_id, "threadId": thread_id})
+
 
 # ---------------------------------------------------------------------------
-# SDK + agent registration
+# Route registration
 # ---------------------------------------------------------------------------
 
-anchor_agent = LangGraphAGUIAgent(
-    name="anchor_agent",
-    description=(
-        "Reads current wellbeing scores for the Reynolds family and renders "
-        "the appropriate Anchor cards — DriftScoreCard, PatternAlertCard, "
-        "CombinedTriageView — directly in the chat via Generative UI."
-    ),
-    graph=_graph,
-)
+def mount_copilotkit(fastapi_app: FastAPI, prefix: str = "/api/copilotkit") -> None:
+    """Register CopilotKit-compatible REST routes on the FastAPI app.
 
-ck_sdk = CopilotKitRemoteEndpoint(agents=[anchor_agent])
+    Route shape matches what @copilotkit/react-core v1.57.1 expects when using
+    the "rest" transport (auto-detected because GET /info returns 200):
 
-
-# ---------------------------------------------------------------------------
-# Public helper — called from main.py
-# ---------------------------------------------------------------------------
-
-def mount_copilotkit(fastapi_app: Any, prefix: str = "/api/copilotkit") -> None:
-    """Wire the CopilotKit SDK into the FastAPI app.
-
-    Call this AFTER app creation and BEFORE uvicorn starts.
-    Adds real CopilotKit route handlers at the given prefix.
+        GET  {prefix}/info                  → agent registry (object, not array)
+        POST {prefix}/agent/{id}/run        → AG-UI event stream
+        POST {prefix}/agent/{id}/state      → empty state (no persistence)
     """
-    add_fastapi_endpoint(fastapi_app, ck_sdk, prefix)
+
+    _INFO_RESPONSE = {
+        "version": "1.57.1",
+        "agents": {
+            # CopilotKit internally uses "default" for background listeners.
+            "default": {"description": AGENT_DESCRIPTION, "capabilities": []},
+            AGENT_ID:  {"description": AGENT_DESCRIPTION, "capabilities": []},
+        },
+    }
+
+    @fastapi_app.get(f"{prefix}/info", include_in_schema=False)
+    async def copilotkit_info():
+        return JSONResponse(_INFO_RESPONSE)
+
+    async def _run_stream(request: Request) -> StreamingResponse:
+        """Shared helper: parse body, return AG-UI SSE stream with LF-only delimiters.
+
+        sse_starlette uses CRLF (\\r\\n\\r\\n) but @ag-ui/client's parseSSEStream
+        only splits on /\\n\\n/ (LF-only). We bypass EventSourceResponse and
+        write raw bytes so events are correctly delimited for the JS parser.
+        """
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            pass
+        run_id = body.get("runId") or f"run_{uuid.uuid4().hex[:12]}"
+        thread_id = body.get("threadId") or f"thread_{uuid.uuid4().hex[:12]}"
+
+        async def event_gen():
+            async for json_str in _stream_agent_run(run_id, thread_id):
+                yield f"data: {json_str}\n\n"
+
+        return StreamingResponse(
+            event_gen(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-store",
+                "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
+            },
+        )
+
+    @fastapi_app.post(f"{prefix}", include_in_schema=False)
+    async def copilotkit_root_run(request: Request):
+        """Handle root runtime URL POST.
+
+        CopilotKit v2 auto-detection sends POST {method:"info"} here expecting
+        JSON (same as GET /info).  All other POSTs are agent runs → SSE stream.
+        """
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            pass
+
+        if body.get("method") == "info":
+            return JSONResponse(_INFO_RESPONSE)
+
+        run_id = body.get("runId") or f"run_{uuid.uuid4().hex[:12]}"
+        thread_id = body.get("threadId") or f"thread_{uuid.uuid4().hex[:12]}"
+
+        async def event_gen():
+            async for json_str in _stream_agent_run(run_id, thread_id):
+                yield f"data: {json_str}\n\n"
+
+        return StreamingResponse(
+            event_gen(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
+
+    @fastapi_app.post(f"{prefix}/agent/{{agent_id}}/run", include_in_schema=False)
+    async def copilotkit_agent_run(agent_id: str, request: Request):
+        """Stream AG-UI events for an agent run (REST transport path)."""
+        return await _run_stream(request)
+
+    @fastapi_app.post(f"{prefix}/agent/{{agent_id}}/state", include_in_schema=False)
+    async def copilotkit_agent_state(agent_id: str):
+        """Return empty agent state (we don't persist thread state)."""
+        return JSONResponse({"state": {}})
+
+    @fastapi_app.options(f"{prefix}", include_in_schema=False)
+    @fastapi_app.options(f"{prefix}/agent/{{agent_id}}/run", include_in_schema=False)
+    @fastapi_app.options(f"{prefix}/agent/{{agent_id}}/state", include_in_schema=False)
+    @fastapi_app.options(f"{prefix}/info", include_in_schema=False)
+    async def copilotkit_preflight():
+        return JSONResponse({}, status_code=200)
