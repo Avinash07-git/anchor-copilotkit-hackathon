@@ -6,6 +6,107 @@
 > works. Then skim `ANCHOR_SPEC.md` (full product spec) and `SUBMISSION.md`
 > (hackathon packet).
 
+---
+
+## 🆕 May 8 evening session — what changed (TL;DR for next puppy)
+
+Avinash audited the demo and caught **two real demo lies**, then asked for
+better visual hierarchy. All three are now fixed and pushed to `main`
+(latest commit `ac7c5c8`). Working tree clean.
+
+**Fix 1 — Real per-day score history (commit `c309dca`).** The 14-day
+sparkline in every `DriftScoreCard` was previously a sine-wave wobble
+generated client-side in `cardHelpers.deriveSparkline()`. Now the backend
+emits `score_history: list[float]` on the card props, computed by
+`compute_score_history(person_id, days=14)` in `backend/app/mcp_tools/scoring.py`
+— it re-runs the person's instrument with `today=d` for d in
+`[today-13 .. today]` so each point is the actual wellbeing score that
+would have been displayed on that day. Frontend (`A2UIComponents.tsx`)
+prefers `props.score_history` when present, falls back to `deriveSparkline`
+only defensively.
+
+**Fix 2 — Recommendations grounded in actual signals (commit `c309dca`).**
+`suggested_actions` was a hard-coded list per pattern in
+`data/demo_dataset.py` — Helen's cognitive pattern always recommended
+"stove safety check" even when no stove signal was logged. Now
+`backend/app/plan_builder.py` defines `_SIGNAL_ACTION_TEMPLATES` (28
+signal-id → action mappings, covering all of HF + NPI + ZBI) and
+`_build_dynamic_actions(pattern_match)` reads `score_result.active_domains`
+(the signals that actually fired the threshold), sorts by
+`cumulative_severity`, and emits matching actions. Always tops with one
+framework-level fallback per lens ("bring this to the cardiologist /
+neurologist / loop in family"). De-duped, capped at 4. The static
+`PATTERNS[*].suggested_actions` is now only a defensive fallback.
+
+**Fix 3 — Bold chapter sections + ObservationLogCard + dynamic counters
+(commit `ac7c5c8`).**
+
+- **New component `ObservationLogCard`** (backend builder + Pydantic
+  schema in `app/ui_plan.py` + React component + dispatcher case in
+  `A2UIComponents.tsx`). Shows verbatim notes as chat-style cards with a
+  severity-tinted left rail. Wired into `combined_triage` and
+  `single_alert` for all three people with person-specific framing
+  (Sarah's = "Your private notes — last 14 days", Helen's = "Helen's
+  recent moments — verbatim", Tom's = "Tom's recent symptom notes"). This
+  finally gives Sarah parity with Helen's `ContributorMap`.
+
+- **Dynamic counters.** `combined_triage` title is now
+  `"{Two|Three} things asking for your attention right now"` based on
+  actual `len(matches)`. `PersonSection` in `Layouts.tsx` takes a
+  `total` prop and renders `"Priority N of {total}"` instead of the
+  hardcoded `"Person N of 3"`.
+
+- **Chapter banner redesign** in `PersonSection` (`Layouts.tsx`):
+  full-width gradient wash tinted to person's state colour, 64px
+  coloured-ring avatar (was 40px), 30–34px display-font name (was 22px),
+  bright state pill ("NEEDS ATTENTION" / "WORTH RAISING"), wellbeing
+  score in 40px display font on the right, bottom border separating
+  banner from body cards. Section spacing bumped from `space-y-6` to
+  `space-y-10`.
+
+- `ObservationLogCard` added to the wide-cards list so it spans both
+  columns alongside `PatternAlertCard` and `SignalTimeline`.
+
+**Files touched today:**
+- `backend/app/mcp_tools/scoring.py` — added `compute_score_history`
+- `backend/app/plan_builder.py` — `_SIGNAL_ACTION_TEMPLATES`,
+  `_build_dynamic_actions`, `_observation_log_card`, dynamic triage
+  title, wired observation log into single_alert + combined_triage
+- `backend/app/ui_plan.py` — `ObservationLogCardProps`, added to
+  `ComponentType` union, `score_history` on `DriftScoreCardProps`
+- `frontend/src/types/uiPlan.ts` — mirrored the schema
+- `frontend/src/components/A2UIComponents.tsx` — `ObservationLogCard`
+  React component + dispatcher case, `score_history` preference in
+  `DriftScoreCard`
+- `frontend/src/components/Layouts.tsx` — chapter banner redesign,
+  dynamic `total` counter, removed unused `headerEmojiTone`
+
+**Smoke test that proves it (run after `npm run dev` + uvicorn up):**
+```bash
+curl -s -X POST http://localhost:8000/demo/reset > /dev/null && sleep 1
+for i in 1 2 3 4; do
+  curl -s -X POST http://localhost:8000/api/chat -H "Content-Type: application/json" \
+    -d '{"message":"Mom asked me the same question four times today","observer":"sarah","person_id":"helen"}' > /dev/null
+done
+curl -s -X POST http://localhost:8000/api/chat -H "Content-Type: application/json" \
+  -d '{"message":"I really do not know how much longer I can do this","observer":"sarah","person_id":"sarah"}' \
+  | python3 -c "import json,sys; p=json.load(sys.stdin)['plan']; \
+    print('layout:', p['layout']); \
+    [print(c['props']['title']) for c in p['components'] if c['type']=='CombinedTriageView']; \
+    [print(c['type'], '→', len(c['props'].get('score_history',[])), 'history pts') for c in p['components'] if c['type']=='DriftScoreCard']"
+```
+Expected: `Two things asking for your attention right now`, three
+DriftScoreCards each with 14 history points.
+
+**What's still demo-data and acknowledged (not bugs):** Reynolds family
+is fictional, seeded historical observations are scenario fixtures, the
+Mark/SMS draft message is mock copy, the Bay Area respite phone numbers
+are real orgs but selection is static. Everything DOWNSTREAM of those
+inputs (scoring, state, sparkline, signals, recommendations, talking
+points) is real instrument math.
+
+---
+
 **Last updated:** 2026-05-08 evening (Friday). Hackathon is Saturday May 9.
 
 ---
